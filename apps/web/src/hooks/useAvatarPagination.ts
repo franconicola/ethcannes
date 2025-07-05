@@ -1,5 +1,5 @@
 import type { Avatar, PaginationMeta } from '@/components/avatar/types'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 interface UseAvatarPaginationOptions {
   initialPage?: number
@@ -25,24 +25,36 @@ interface UseAvatarPaginationReturn {
 export function useAvatarPagination(options: UseAvatarPaginationOptions = {}): UseAvatarPaginationReturn {
   const { initialPage = 1, initialLimit = 12 } = options
 
+  // Use ref to stabilize initialLimit and prevent infinite loops
+  const limitRef = useRef(initialLimit)
+  
+  // Only update ref if the value actually changes
+  if (limitRef.current !== initialLimit) {
+    limitRef.current = initialLimit
+  }
+
   // State
   const [avatars, setAvatars] = useState<Avatar[]>([])
   const [pagination, setPagination] = useState<PaginationMeta | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [currentPage, setCurrentPage] = useState(initialPage)
+  const [triggerReload, setTriggerReload] = useState(0)
 
-  const loadAvatars = useCallback(
-    async (signal: AbortSignal, page: number, limit: number) => {
+  // Single effect to handle all loading - only depend on stable values
+  useEffect(() => {
+    const controller = new AbortController()
+    
+    const loadAvatars = async () => {
       setLoading(true)
       setError(null)
       
-      console.log('🔄 Loading avatars:', { page, limit })
+      console.log('🔄 Loading avatars:', { page: currentPage, limit: limitRef.current })
 
       // Build API URL directly to avoid circular dependencies
       const params = new URLSearchParams()
-      params.set('page', page.toString())
-      params.set('limit', limit.toString())
+      params.set('page', currentPage.toString())
+      params.set('limit', limitRef.current.toString())
       
       const primaryApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api'
       const finalUrl = `${primaryApiUrl}/agents/public?${params.toString()}`
@@ -50,7 +62,7 @@ export function useAvatarPagination(options: UseAvatarPaginationOptions = {}): U
 
       try {
         const response = await fetch(finalUrl, {
-          signal,
+          signal: controller.signal,
           headers: {
             Accept: 'application/json',
             'Content-Type': 'application/json',
@@ -82,18 +94,14 @@ export function useAvatarPagination(options: UseAvatarPaginationOptions = {}): U
       } finally {
         setLoading(false)
       }
-    },
-    [], // No dependencies to prevent infinite loops
-  )
+    }
 
-  useEffect(() => {
-    const controller = new AbortController()
-    loadAvatars(controller.signal, currentPage, initialLimit)
+    loadAvatars()
 
     return () => {
       controller.abort()
     }
-  }, [loadAvatars, currentPage, initialLimit])
+  }, [currentPage, triggerReload]) // Only depend on currentPage and triggerReload
 
   // Actions
   const setPage = useCallback((page: number) => {
@@ -105,9 +113,8 @@ export function useAvatarPagination(options: UseAvatarPaginationOptions = {}): U
   }, [])
 
   const reload = useCallback(() => {
-    const controller = new AbortController()
-    loadAvatars(controller.signal, currentPage, initialLimit)
-  }, [loadAvatars, currentPage, initialLimit])
+    setTriggerReload(prev => prev + 1)
+  }, [])
 
   return {
     // Data
