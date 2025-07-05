@@ -95,7 +95,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }
 
   // Make request to backend (supports both authenticated and anonymous users)
-  const makeRequest = async (endpoint: string, options: RequestInit = {}) => {
+  const makeRequest = useCallback(async (endpoint: string, options: RequestInit = {}) => {
     const headers: any = {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
@@ -125,7 +125,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     }
 
     return response.json()
-  }
+  }, [isAuthenticated, getAccessToken])
 
   // Create new session
   const createSession = async (agentId: string): Promise<AIAgentSession> => {

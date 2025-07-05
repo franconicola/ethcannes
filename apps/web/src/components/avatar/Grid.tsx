@@ -28,7 +28,7 @@ export function AvatarGrid({
           <div className="text-4xl mb-4">🤖</div>
           <h3 className="text-lg font-semibold">No avatars found</h3>
           <p className="text-muted-foreground">
-            We couldn't find any avatars matching your criteria. This might be due to:
+            We couldn&apos;t find any avatars matching your criteria. This might be due to:
           </p>
           <ul className="text-sm text-muted-foreground text-left space-y-1">
             <li>• API server not running</li>
