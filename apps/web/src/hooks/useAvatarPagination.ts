@@ -48,47 +48,47 @@ export function useAvatarPagination(options: UseAvatarPaginationOptions = {}): U
     console.log('🔄 Loading avatars:', { page, limit })
 
     // Build API URL - use relative URL to avoid hostname issues
-    const params = new URLSearchParams()
+      const params = new URLSearchParams()
     params.set('page', page.toString())
     params.set('limit', limit.toString())
-    
+      
     const finalUrl = `/api/agents/public?${params.toString()}`
-    console.log(`🔄 Trying API at: ${finalUrl}`)
+      console.log(`🔄 Trying API at: ${finalUrl}`)
 
-    try {
+      try {
       // Use minimal fetch options that work (no Content-Type header for GET requests)
-      const response = await fetch(finalUrl, {
+        const response = await fetch(finalUrl, {
         method: 'GET',
         signal,
         // Only include Accept header, not Content-Type (which causes redirects)
-        headers: {
+          headers: {
           'Accept': 'application/json'
-        },
-      })
+          },
+        })
 
-      if (!response.ok) {
-        const errorText = await response.text()
+        if (!response.ok) {
+          const errorText = await response.text()
         console.error(`❌ API returned ${response.status}: ${errorText}`)
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-      }
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+        }
 
-      const data = await response.json()
+        const data = await response.json()
 
-      if (data.success && data.data && Array.isArray(data.data.agents)) {
-        setAvatars(data.data.agents)
+        if (data.success && data.data && Array.isArray(data.data.agents)) {
+          setAvatars(data.data.agents)
         setPagination(data.data.pagination || { 
           page: page, 
           totalPages: Math.ceil(data.data.agents.length / limit), 
           totalItems: data.data.agents.length 
         })
-        console.log(`✅ Loaded ${data.data.agents.length} avatars`)
+          console.log(`✅ Loaded ${data.data.agents.length} avatars`)
         setError(null) // Clear any previous errors
-      } else {
-        throw new Error(data.error || 'Invalid response format')
-      }
-    } catch (err) {
-      if (err.name !== 'AbortError') {
-        console.error('❌ Failed to load avatars:', err)
+        } else {
+          throw new Error(data.error || 'Invalid response format')
+        }
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          console.error('❌ Failed to load avatars:', err)
         throw err
       }
     }
@@ -113,7 +113,7 @@ export function useAvatarPagination(options: UseAvatarPaginationOptions = {}): U
         }
       } finally {
         if (!controller.signal.aborted) {
-          setLoading(false)
+        setLoading(false)
         }
       }
     }

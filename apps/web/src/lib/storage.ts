@@ -86,7 +86,7 @@ export const initializeZGStorage = async (): Promise<boolean> => {
       console.warn('0G Storage dependencies not available')
       return false
     }
-    
+
     console.log('🚀 Initializing 0G Storage connection...')
     
     // Initialize provider
@@ -136,14 +136,14 @@ export const storeAgentPrompt = async (
 ): Promise<StorageResult> => {
   try {
     console.log(`📤 Storing prompt for agent: ${prompt.agentId}`)
-    
-    if (!indexer) {
+
+  if (!indexer) {
       const initialized = await initializeZGStorage()
       if (!initialized) {
         throw new Error('0G Storage not initialized')
       }
-    }
-    
+  }
+
     if (!provider || !indexer || !ethers || !ZgFile) {
       throw new Error('0G Storage dependencies not available')
     }
@@ -338,18 +338,18 @@ export const getStorageStatus = async (): Promise<StorageStatus> => {
 // Generate a test prompt for a given agent
 export const generateTestPrompt = async (agentId: string): Promise<AIAgentPrompt> => {
   return {
-    agentId,
+      agentId,
     agentName: `Test Agent ${agentId}`,
     systemPrompt: `You are a test AI agent (${agentId}) designed for educational purposes. This is a sample prompt for testing the 0G Storage integration. You should provide helpful, safe, and educational responses appropriate for your target audience.`,
-    version: '1.0',
+      version: '1.0',
     createdAt: new Date().toISOString(),
     createdBy: 'test-system',
     educationalLevel: 'elementary',
     subjects: ['testing', 'demonstration'],
     safetyRating: 'safe'
   }
-}
-
+  }
+  
 // Simplified functions for basic usage without full 0G Storage integration
 export const createFallbackPrompt = (agentId: string): AIAgentPrompt => {
   return {

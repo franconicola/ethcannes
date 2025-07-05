@@ -14,15 +14,13 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { SidebarTrigger } from '@/components/ui/sidebar'
 import { useAuth } from '@/contexts/AuthContext'
-import { useConnectWallet, usePrivy, useWallets } from '@privy-io/react-auth'
+import { usePrivy } from '@privy-io/react-auth'
 import { ChevronDown, CreditCard, LogOut, Settings, User } from 'lucide-react'
 import Link from 'next/link'
 
 export function Navigation() {
   const { isAuthenticated, login, logout, user } = useAuth()
   const { user: privyUser, authenticated } = usePrivy()
-  const { wallets } = useWallets()
-  const { connectWallet } = useConnectWallet()
 
   // Helper function to extract proper initials from user name
   const getInitials = (user: any, privyUser: any) => {
@@ -105,25 +103,21 @@ export function Navigation() {
       if (walletAccount?.address) return walletAccount.address
     }
     
-    // Fall back to connected wallets from useWallets hook
-    if (wallets.length > 0) {
-      return wallets[0].address
-    }
-    
     return null
   }
 
-  // Check if user has a connected wallet - use both our DB and Privy wallets
-  const hasConnectedWallet = getWalletAddress(user, privyUser) !== null || wallets.length > 0
+  // Check if user has a connected wallet
+  const hasConnectedWallet = getWalletAddress(user, privyUser) !== null
 
   // Handle wallet connection logic
   const handleWalletAction = () => {
     if (!authenticated) {
       // User not authenticated at all - need to login first
       login()
-    } else if (!hasConnectedWallet) {
-      // User authenticated but no wallet - connect wallet
-      connectWallet()
+    } else {
+      // For now, just trigger login to show Privy modal
+      // Users can connect wallet through Privy's interface
+      login()
     }
   }
 
@@ -242,11 +236,6 @@ export function Navigation() {
                       <Settings className="mr-2 h-4 w-4" />
                       <span>Settings</span>
                     </Link>
-                  </DropdownMenuItem>
-                  {/* @ts-ignore */}
-                  <DropdownMenuItem onClick={connectWallet}>
-                    <CreditCard className="mr-2 h-4 w-4" />
-                    <span>Connect Another Wallet</span>
                   </DropdownMenuItem>
                   {/* @ts-ignore */}
                   <DropdownMenuSeparator />
