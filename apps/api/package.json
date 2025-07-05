@@ -5,12 +5,9 @@
   "type": "module",
   "main": "src/index.js",
   "scripts": {
-    "build": "npm run env -- npx prisma generate",
-    "build:worker": "npm run env -- npx prisma generate && cp src/worker.js dist/ || mkdir -p dist && cp src/worker.js dist/",
-    "dev": "wrangler dev --env development",
-    "deploy": "wrangler deploy",
-    "deploy:cf": "wrangler deploy src/worker.js",
-    "deploy:cf:dev": "wrangler deploy src/worker.js --env development",
+    "dev": "node src/index.js",
+    "build": "echo 'Build completed - using Vercel Functions'",
+    "start": "node src/index.js",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
@@ -23,7 +20,7 @@
   },
   "dependencies": {
     "@0glabs/0g-ts-sdk": "^0.3.0",
-    "@prisma/client": "^6.9.0",
+    "@prisma/client": "^5.14.0",
     "@privy-io/server-auth": "^1.9.0",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
@@ -36,11 +33,10 @@
     "zod": "^3.22.4"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20240725.0",
     "@eslint/eslintrc": "^3.2.0",
     "@prisma/extension-accelerate": "^2.0.1",
     "dotenv-cli": "^8.0.0",
     "eslint": "^9.28.0",
-    "prisma": "^6.9.0"
+    "prisma": "^5.14.0"
   }
 }

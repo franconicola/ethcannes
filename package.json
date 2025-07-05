@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "npm run dev --workspace=apps/web",
     "dev:web": "npm run dev --workspace=apps/web",
-    "dev:web:https": "npm run dev:https --workspace=apps/web",
+    "dev:https": "npm run dev:https --workspace=apps/web",
     "dev:api": "npm run dev --workspace=apps/api",
     "build": "npm run build --workspace=apps/web",
     "build:web": "npm run build --workspace=apps/web",
@@ -19,14 +19,20 @@
     "start:api": "npm run start --workspace=apps/api",
     "lint": "npm run lint --workspaces",
     "type-check": "npm run type-check --workspaces",
-    "deploy:cf": "npm run deploy:cf --workspace=apps/web && npm run deploy:cf --workspace=apps/api",
-    "deploy:cf:web": "npm run deploy:cf --workspace=apps/web",
-    "deploy:cf:api": "npm run deploy:cf --workspace=apps/api",
-    "deploy:cf:dev": "npm run deploy:cf:dev --workspace=apps/api"
+    "db:generate": "npm run db:generate --workspace=apps/web",
+    "db:push": "npm run db:push --workspace=apps/web",
+    "db:migrate": "npm run db:migrate --workspace=apps/web",
+    "db:migrate:deploy": "npm run db:migrate:deploy --workspace=apps/web",
+    "db:studio": "npm run db:studio --workspace=apps/web",
+    "deploy": "vercel --prod",
+    "deploy:preview": "vercel"
   },
   "dependencies": {
     "@walletconnect/heartbeat": "^1.2.2",
     "busboy": "^1.6.0",
     "react-native-uuid": "^2.0.3"
+  },
+  "devDependencies": {
+    "vercel": "^37.0.0"
   }
 }
