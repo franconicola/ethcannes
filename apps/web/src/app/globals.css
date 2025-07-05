@@ -1,0 +1,150 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* SparkMind Brand Colors */
+    
+    /* Background Colors */
+    --bg-white: 0 0% 100%;                    /* #FFFFFF */
+    --bg-gray-light: 219 10% 73%;             /* #AFAFBD */
+    --bg-blue-primary: 205 100% 50%;          /* #0094FF */
+    --bg-dark: 0 0% 7%;                       /* #121212 */
+    --bg-gray-soft: 208 23% 69%;              /* #CBD5E0 */
+    --bg-gray-medium: 207 21% 77%;            /* #BBC6D3 */
+    
+    /* Text Colors */
+    --text-black: 0 0% 0%;                    /* #000000 */
+    --text-dark: 0 0% 7%;                     /* #121212 */
+    --text-red-accent: 355 100% 62%;          /* #FF3B4C */
+    --text-charcoal: 0 0% 11%;                /* #1C1C1C */
+    --text-orange: 17 100% 50%;               /* #FF5700 */
+    --text-purple: 227 58% 65%;               /* #7289DA */
+    
+    /* Border Colors */
+    --border-light: 214 32% 91%;              /* #E2E8F0 */
+    --border-black: 0 0% 0%;                  /* #000000 */
+    --border-dark: 0 0% 7%;                   /* #121212 */
+    --border-blue-light: 205 70% 72%;         /* #90CDF4 */
+
+    /* Tailwind CSS Variables (mapped to brand colors) */
+    --background: var(--bg-white);
+    --foreground: var(--text-dark);
+    --card: var(--bg-white);
+    --card-foreground: var(--text-dark);
+    --popover: var(--bg-white);
+    --popover-foreground: var(--text-dark);
+    --primary: var(--bg-blue-primary);
+    --primary-foreground: var(--bg-white);
+    --secondary: var(--bg-gray-soft);
+    --secondary-foreground: var(--text-dark);
+    --muted: var(--bg-gray-medium);
+    --muted-foreground: var(--text-charcoal);
+    --accent: var(--text-orange);
+    --accent-foreground: var(--bg-white);
+    --destructive: var(--text-red-accent);
+    --destructive-foreground: var(--bg-white);
+    --border: var(--border-light);
+    --input: var(--border-light);
+    --ring: var(--bg-blue-primary);
+    --radius: 0.5rem;
+    --chart-1: var(--bg-blue-primary);
+    --chart-2: var(--text-purple);
+    --chart-3: var(--text-orange);
+    --chart-4: var(--text-red-accent);
+    --chart-5: var(--bg-gray-light);
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    /* Dark theme using brand colors */
+    --background: var(--bg-dark);
+    --foreground: var(--bg-white);
+    --card: var(--bg-dark);
+    --card-foreground: var(--bg-white);
+    --popover: var(--bg-dark);
+    --popover-foreground: var(--bg-white);
+    --primary: var(--bg-blue-primary);
+    --primary-foreground: var(--bg-white);
+    --secondary: var(--text-charcoal);
+    --secondary-foreground: var(--bg-white);
+    --muted: var(--text-charcoal);
+    --muted-foreground: var(--bg-gray-light);
+    --accent: var(--text-orange);
+    --accent-foreground: var(--bg-white);
+    --destructive: var(--text-red-accent);
+    --destructive-foreground: var(--bg-white);
+    --border: var(--border-dark);
+    --input: var(--border-dark);
+    --ring: var(--bg-blue-primary);
+    --chart-1: var(--bg-blue-primary);
+    --chart-2: var(--text-purple);
+    --chart-3: var(--text-orange);
+    --chart-4: var(--text-red-accent);
+    --chart-5: var(--bg-gray-light);
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Custom utility classes for brand colors */
+@layer utilities {
+  /* Background utilities */
+  .bg-brand-white { background-color: hsl(var(--bg-white)); }
+  .bg-brand-gray-light { background-color: hsl(var(--bg-gray-light)); }
+  .bg-brand-blue-primary { background-color: hsl(var(--bg-blue-primary)); }
+  .bg-brand-dark { background-color: hsl(var(--bg-dark)); }
+  .bg-brand-gray-soft { background-color: hsl(var(--bg-gray-soft)); }
+  .bg-brand-gray-medium { background-color: hsl(var(--bg-gray-medium)); }
+  
+  /* Text utilities */
+  .text-brand-black { color: hsl(var(--text-black)); }
+  .text-brand-dark { color: hsl(var(--text-dark)); }
+  .text-brand-red-accent { color: hsl(var(--text-red-accent)); }
+  .text-brand-charcoal { color: hsl(var(--text-charcoal)); }
+  .text-brand-orange { color: hsl(var(--text-orange)); }
+  .text-brand-purple { color: hsl(var(--text-purple)); }
+  
+  /* Border utilities */
+  .border-brand-light { border-color: hsl(var(--border-light)); }
+  .border-brand-black { border-color: hsl(var(--border-black)); }
+  .border-brand-dark { border-color: hsl(var(--border-dark)); }
+  .border-brand-blue-light { border-color: hsl(var(--border-blue-light)); }
+}
+
+/* Custom loader animations */
+@keyframes wave {
+  0%, 40%, 100% {
+    transform: scaleY(0.4);
+  }
+  20% {
+    transform: scaleY(1);
+  }
+}
+
+.animate-wave {
+  animation: wave 1.2s infinite ease-in-out;
+} 

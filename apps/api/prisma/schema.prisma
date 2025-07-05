@@ -1,0 +1,197 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                    String   @id @default(cuid())
+  privyUserId          String   @unique @map("privy_user_id")
+  walletAddress        String?  @map("wallet_address")
+  email                String?
+  displayName          String?  @map("display_name")
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+  subscriptionTier     SubscriptionTier @default(FREE) @map("subscription_tier")
+  agentSessionsCount   Int      @default(0) @map("agent_sessions_count")
+  
+  // Enhanced credit tracking
+  credits              Int      @default(0) // Current available credits
+  creditsUsed          Int      @default(0) @map("credits_used") // Total credits used
+  creditsGranted       Int      @default(0) @map("credits_granted") // Total credits granted
+  lastCreditReset      DateTime? @map("last_credit_reset") // For daily/monthly resets
+  
+  // Usage tracking
+  totalMessagesCount   Int      @default(0) @map("total_messages_count")
+  totalSessionTime     Int      @default(0) @map("total_session_time") // in seconds
+  lastActiveAt         DateTime? @map("last_active_at")
+  
+  // Relations
+  agentSessions        AgentSession[]
+  chatMessages         ChatMessage[]
+  userPreferences      UserPreference?
+  creditTransactions   CreditTransaction[]
+  usageStatistics      UsageStatistic[]
+
+  @@map("users")
+}
+
+// New model to track anonymous users and their free message usage
+model AnonymousSession {
+  id                   String   @id @default(cuid())
+  sessionIdentifier    String   @unique @map("session_identifier") // Browser fingerprint or IP-based identifier
+  freeMessagesUsed     Int      @default(0) @map("free_messages_used")
+  createdAt            DateTime @default(now()) @map("created_at")
+  lastUsed             DateTime @default(now()) @map("last_used")
+  ipAddress            String?  @map("ip_address")
+  userAgent            String?  @map("user_agent")
+  
+  // Relations
+  agentSessions        AgentSession[]
+  chatMessages         ChatMessage[]
+
+  @@map("anonymous_sessions")
+}
+
+// Updated model for AI Agent sessions (previously AvatarSession)
+model AgentSession {
+  id                    String            @id @default(cuid())
+  userId                String?           @map("user_id") // Made optional for anonymous sessions
+  anonymousSessionId    String?           @map("anonymous_session_id") // For anonymous users
+  agentId               String            @map("agent_id") // AI agent ID (e.g., 'professional-advisor')
+  agentName             String            @map("agent_name") // Human-readable agent name
+  status                SessionStatus     @default(ACTIVE)
+  createdAt             DateTime          @default(now()) @map("created_at")
+  endedAt               DateTime?         @map("ended_at")
+  lastUsed              DateTime          @default(now()) @map("last_used") // For auto-cleanup
+  
+  // AI Agent specific fields
+  systemPrompt          String?           @map("system_prompt") // System prompt for this agent
+  conversation          Json?             // Full conversation history as JSON
+  tokenUsage            Json?             @map("token_usage") // Token usage statistics
+  model                 String?           // AI model used (e.g., 'gpt-4o-mini')
+  temperature           Float?            // Temperature setting for this session
+  
+  // Enhanced session metadata
+  sessionTitle          String?           @map("session_title") // User-defined session name
+  sessionSummary        String?           @map("session_summary") // AI-generated summary
+  messageCount          Int               @default(0) @map("message_count")
+  duration              Int               @default(0) // Session duration in seconds
+  creditsUsed           Int               @default(0) @map("credits_used") // Credits consumed by this session
+  
+  // Session settings and metadata
+  settings              Json?             // Session-specific settings
+  metadata              Json?             // Additional metadata (quality settings, etc.)
+  
+  // Relations
+  user                  User?             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  anonymousSession      AnonymousSession? @relation(fields: [anonymousSessionId], references: [id], onDelete: Cascade)
+  chatMessages          ChatMessage[]
+
+  @@map("agent_sessions") // Updated table name
+}
+
+model ChatMessage {
+  id                    String            @id @default(cuid())
+  sessionId             String            @map("session_id")
+  userId                String?           @map("user_id") // Made optional for anonymous sessions
+  anonymousSessionId    String?           @map("anonymous_session_id") // For anonymous users
+  messageText           String            @map("message_text")
+  messageType           MessageType       @map("message_type")
+  createdAt             DateTime          @default(now()) @map("created_at")
+  
+  // Enhanced message tracking
+  tokenCount            Int?              @map("token_count") // Number of tokens used
+  processingTime        Int?              @map("processing_time") // Time to process in ms
+  creditsUsed           Float             @default(0) @map("credits_used") // Credits used for this message
+  
+  // Message metadata
+  metadata              Json?             // Additional metadata (quality, model used, etc.)
+  
+  // Relations
+  session               AgentSession      @relation(fields: [sessionId], references: [id], onDelete: Cascade) // Updated relation
+  user                  User?             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  anonymousSession      AnonymousSession? @relation(fields: [anonymousSessionId], references: [id], onDelete: Cascade)
+
+  @@map("chat_messages")
+}
+
+// New model for tracking credit transactions
+model CreditTransaction {
+  id                    String                 @id @default(cuid())
+  userId                String                 @map("user_id")
+  amount                Int                    // Positive for credits added, negative for credits used
+  type                  CreditTransactionType  @map("transaction_type")
+  description           String?                // Description of the transaction
+  sessionId             String?                @map("session_id") // Associated session if applicable
+  createdAt             DateTime               @default(now()) @map("created_at")
+  
+  // Relations
+  user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("credit_transactions")
+}
+
+// New model for usage statistics
+model UsageStatistic {
+  id                    String            @id @default(cuid())
+  userId                String            @map("user_id")
+  date                  DateTime          @map("date") // Date for the statistic (daily aggregation)
+  messagesCount         Int               @default(0) @map("messages_count")
+  sessionCount          Int               @default(0) @map("session_count")
+  sessionTime           Int               @default(0) @map("session_time") // Total session time in seconds
+  creditsUsed           Int               @default(0) @map("credits_used")
+  createdAt             DateTime          @default(now()) @map("created_at")
+  
+  // Relations
+  user                  User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@map("usage_statistics")
+}
+
+model UserPreference {
+  id                 String   @id @default(cuid())
+  userId             String   @unique @map("user_id")
+  preferredAgentId   String?  @map("preferred_agent_id")
+  settings           Json?
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+  
+  // Relations
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_preferences")
+}
+
+enum SubscriptionTier {
+  FREE
+  PREMIUM
+  ENTERPRISE
+}
+
+enum SessionStatus {
+  ACTIVE
+  ENDED
+  ERROR
+}
+
+enum MessageType {
+  USER
+  AGENT
+}
+
+enum CreditTransactionType {
+  PURCHASE
+  GRANT
+  USAGE
+  REFUND
+  BONUS
+} 

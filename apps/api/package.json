@@ -1,0 +1,44 @@
+{
+  "name": "@sparkmind/api",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "build": "npm run env -- npx prisma generate",
+    "build:worker": "npm run env -- npx prisma generate && cp src/worker.js dist/ || mkdir -p dist && cp src/worker.js dist/",
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "deploy:cf": "wrangler deploy src/worker.js",
+    "deploy:cf:dev": "wrangler deploy src/worker.js --env development",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:migrate": "prisma migrate dev",
+    "db:migrate:deploy": "prisma migrate deploy",
+    "db:migrate:reset": "prisma migrate reset",
+    "db:studio": "prisma studio",
+    "lint": "eslint src --ext .js",
+    "type-check": "echo 'No TypeScript files to check'",
+    "env": "dotenv -e .dev.vars"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.9.0",
+    "@privy-io/server-auth": "^1.9.0",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "helmet": "^7.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "rate-limiter-flexible": "^4.0.1",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20240725.0",
+    "@eslint/eslintrc": "^3.2.0",
+    "@prisma/extension-accelerate": "^2.0.1",
+    "dotenv-cli": "^8.0.0",
+    "eslint": "^9.28.0",
+    "prisma": "^6.9.0"
+  }
+}

@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+
+# Environment variables (sensitive data)
+.dev.vars
+.env
+.env.local
+.env.production.local
+
+# Build outputs
+dist/
+.wrangler/
+
+# Logs
+*.log
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Prisma
+prisma/migrations/.migrate 

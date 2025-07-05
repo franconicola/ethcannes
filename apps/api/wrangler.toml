@@ -1,0 +1,20 @@
+# SparkMind API - Cloudflare Worker Configuration
+name = "sparkmind-api"
+main = "src/worker.js"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat_v2"]
+account_id = "ac9c19446cfa7ec34443ffd99635e30e"
+
+[env.production]
+name = "sparkmind-api"
+
+[env.production.vars]
+NODE_ENV = "production"
+PORT = "3001"
+
+[env.development]
+name = "sparkmind-api-dev"
+
+[env.development.vars]
+NODE_ENV = "development"
+PORT = "3001"
