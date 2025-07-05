@@ -1,37 +1,59 @@
 // Dynamic agent sessions endpoint for chat, stop, and conversation
-import { getEnvVars, getPrismaClient, handleCORS, jsonResponse } from '../../../../lib/api/middleware.js';
-import { validatePrivyToken } from '../../../../lib/api/services/authService.js';
-import { getOrCreateAnonymousSession } from '../../../../lib/api/services/sessionService.js';
-import { createError } from '../../../../lib/api/utils/errors.js';
+import { NextApiRequest, NextApiResponse } from 'next';
+import {
+    createSuccessResponse,
+    errorResponse,
+    getAnonymousSessionId,
+    getAuthHeader,
+    getEnvVars,
+    getPrismaClient,
+    handleCORS,
+    safeParseJSON,
+    validateRequiredFields
+} from '../../../../lib/api/middleware';
+import { validatePrivyToken } from '../../../../lib/api/services/authService';
+import { getOrCreateAnonymousSession } from '../../../../lib/api/services/sessionService';
+import {
+    ApiResponse,
+    AuthInfo,
+    ChatRequest,
+    ChatResponse,
+    ConversationResponse,
+    EnvVars,
+    StopSessionResponse
+} from '../../../../lib/api/types';
 
-export default async function handler(req, res) {
+export default async function handler(
+  req: NextApiRequest, 
+  res: NextApiResponse<ApiResponse<ChatResponse | StopSessionResponse | ConversationResponse>>
+): Promise<void> {
   // Handle CORS
   if (handleCORS(req, res)) return;
 
   try {
-    const env = getEnvVars();
+    const env: EnvVars = getEnvVars();
     const prisma = getPrismaClient();
     
     // Parse authentication
-    const authHeader = req.headers.authorization;
-    const authInfo = await validatePrivyToken(authHeader, env);
+    const authHeader: string | undefined = getAuthHeader(req);
+    const authInfo: AuthInfo = await validatePrivyToken(authHeader, env);
 
     // Parse anonymous session
-    const anonymousSessionId = req.headers['x-anonymous-session-id'];
+    const anonymousSessionId: string | undefined = getAnonymousSessionId(req);
     const anonymousSession = await getOrCreateAnonymousSession(anonymousSessionId, prisma);
 
     // Parse route parameters
     const { slug } = req.query;
     
-    if (!slug || slug.length < 1) {
-      return jsonResponse(res, {
+    if (!slug || !Array.isArray(slug) || slug.length < 1) {
+      return res.status(400).json({
         success: false,
         error: 'Invalid route'
-      }, 400);
+      });
     }
 
-    const sessionId = slug[0];
-    const action = slug[1]; // 'chat', 'stop', or 'conversation'
+    const sessionId: string = slug[0];
+    const action: string | undefined = slug[1]; // 'chat', 'stop', or 'conversation'
 
     // Route based on action
     if (action === 'chat' && req.method === 'POST') {
@@ -41,42 +63,66 @@ export default async function handler(req, res) {
     } else if (action === 'conversation' && req.method === 'GET') {
       return await handleConversation(req, res, sessionId, env, authInfo, anonymousSession, prisma);
     } else {
-      return jsonResponse(res, {
+      return res.status(405).json({
         success: false,
         error: 'Invalid action or method'
-      }, 405);
+      });
     }
 
   } catch (error) {
     console.error('API Error:', error);
-    jsonResponse(res, {
-      success: false,
-      error: error.message || 'Internal server error',
-      code: error.code
-    }, error.statusCode || 500);
+    errorResponse(res, error as Error, 500);
   }
 }
 
 // Handle chat functionality
-async function handleChat(req, res, sessionId, env, authInfo, anonymousSession, prisma) {
-  const { message } = req.body;
-  
-  if (!message || !message.trim()) {
-    return jsonResponse(res, {
+async function handleChat(
+  req: NextApiRequest, 
+  res: NextApiResponse<ApiResponse<ChatResponse>>, 
+  sessionId: string, 
+  env: EnvVars, 
+  authInfo: AuthInfo, 
+  anonymousSession: any, 
+  prisma: any
+): Promise<void> {
+  const requestBody = safeParseJSON<ChatRequest>(req.body);
+  if (!requestBody) {
+    return res.status(400).json({
       success: false,
-      error: 'Message is required'
-    }, 400);
+      error: 'Invalid JSON in request body'
+    });
+  }
+
+  const { isValid, missingFields } = validateRequiredFields(requestBody, ['message']);
+  if (!isValid) {
+    return res.status(400).json({
+      success: false,
+      error: `Missing required fields: ${missingFields.join(', ')}`
+    });
+  }
+
+  const { message } = requestBody;
+
+  if (!message.trim()) {
+    return res.status(400).json({
+      success: false,
+      error: 'Message cannot be empty'
+    });
   }
 
   // Build where clause based on authentication status
-  const whereClause = { id: sessionId };
+  const whereClause: any = { id: sessionId };
   
   if (authInfo.isAuthenticated && authInfo.user) {
     whereClause.userId = authInfo.user.id;
   } else if (anonymousSession) {
     whereClause.anonymousSessionId = anonymousSession.id;
   } else {
-    throw createError('Session access denied', 403, 'ACCESS_DENIED');
+    return res.status(403).json({
+      success: false,
+      error: 'Session access denied',
+      code: 'ACCESS_DENIED'
+    });
   }
 
   // Find the session
@@ -85,7 +131,11 @@ async function handleChat(req, res, sessionId, env, authInfo, anonymousSession, 
   });
 
   if (!session) {
-    throw createError('AI agent session not found', 404, 'SESSION_NOT_FOUND');
+    return res.status(404).json({
+      success: false,
+      error: 'AI agent session not found',
+      code: 'SESSION_NOT_FOUND'
+    });
   }
 
   // For now, return a simple echo response
@@ -95,7 +145,8 @@ async function handleChat(req, res, sessionId, env, authInfo, anonymousSession, 
       sessionId: session.id,
       messageText: message,
       messageType: 'USER',
-      createdAt: new Date()
+      createdAt: new Date(),
+      creditsUsed: 0
     }
   });
 
@@ -104,7 +155,8 @@ async function handleChat(req, res, sessionId, env, authInfo, anonymousSession, 
       sessionId: session.id,
       messageText: `AI Agent Response: ${message}`,
       messageType: 'AGENT',
-      createdAt: new Date()
+      createdAt: new Date(),
+      creditsUsed: 0
     }
   });
 
@@ -117,7 +169,7 @@ async function handleChat(req, res, sessionId, env, authInfo, anonymousSession, 
     }
   });
 
-  return jsonResponse(res, {
+  const responseData: ChatResponse = {
     success: true,
     userMessage: {
       id: userMessage.id,
@@ -135,20 +187,34 @@ async function handleChat(req, res, sessionId, env, authInfo, anonymousSession, 
     agentName: 'AI Agent',
     isAuthenticated: authInfo.isAuthenticated,
     freeMessagesRemaining: 10
-  });
+  };
+
+  res.status(200).json(createSuccessResponse(responseData));
 }
 
 // Handle stop functionality
-async function handleStop(req, res, sessionId, env, authInfo, anonymousSession, prisma) {
+async function handleStop(
+  req: NextApiRequest, 
+  res: NextApiResponse<ApiResponse<StopSessionResponse>>, 
+  sessionId: string, 
+  env: EnvVars, 
+  authInfo: AuthInfo, 
+  anonymousSession: any, 
+  prisma: any
+): Promise<void> {
   // Build where clause based on authentication status
-  const whereClause = { id: sessionId };
+  const whereClause: any = { id: sessionId };
   
   if (authInfo.isAuthenticated && authInfo.user) {
     whereClause.userId = authInfo.user.id;
   } else if (anonymousSession) {
     whereClause.anonymousSessionId = anonymousSession.id;
   } else {
-    throw createError('Session access denied', 403, 'ACCESS_DENIED');
+    return res.status(403).json({
+      success: false,
+      error: 'Session access denied',
+      code: 'ACCESS_DENIED'
+    });
   }
 
   // Find the session
@@ -157,11 +223,15 @@ async function handleStop(req, res, sessionId, env, authInfo, anonymousSession, 
   });
 
   if (!session) {
-    throw createError('AI agent session not found', 404, 'SESSION_NOT_FOUND');
+    return res.status(404).json({
+      success: false,
+      error: 'AI agent session not found',
+      code: 'SESSION_NOT_FOUND'
+    });
   }
 
   // Calculate session duration
-  const sessionDuration = Math.round((new Date() - session.createdAt) / 1000);
+  const sessionDuration = Math.round((new Date().getTime() - session.createdAt.getTime()) / 1000);
 
   // Update session in database
   const updatedSession = await prisma.agentSession.update({
@@ -173,7 +243,7 @@ async function handleStop(req, res, sessionId, env, authInfo, anonymousSession, 
     }
   });
 
-  return jsonResponse(res, {
+  const responseData: StopSessionResponse = {
     success: true,
     session: {
       id: updatedSession.id,
@@ -183,20 +253,34 @@ async function handleStop(req, res, sessionId, env, authInfo, anonymousSession, 
       duration: updatedSession.duration,
       messageCount: updatedSession.messageCount,
     }
-  });
+  };
+
+  res.status(200).json(createSuccessResponse(responseData));
 }
 
 // Handle conversation history
-async function handleConversation(req, res, sessionId, env, authInfo, anonymousSession, prisma) {
+async function handleConversation(
+  req: NextApiRequest, 
+  res: NextApiResponse<ApiResponse<ConversationResponse>>, 
+  sessionId: string, 
+  env: EnvVars, 
+  authInfo: AuthInfo, 
+  anonymousSession: any, 
+  prisma: any
+): Promise<void> {
   // Build where clause based on authentication status
-  const whereClause = { id: sessionId };
+  const whereClause: any = { id: sessionId };
   
   if (authInfo.isAuthenticated && authInfo.user) {
     whereClause.userId = authInfo.user.id;
   } else if (anonymousSession) {
     whereClause.anonymousSessionId = anonymousSession.id;
   } else {
-    throw createError('Session access denied', 403, 'ACCESS_DENIED');
+    return res.status(403).json({
+      success: false,
+      error: 'Session access denied',
+      code: 'ACCESS_DENIED'
+    });
   }
 
   // Find the session
@@ -211,10 +295,14 @@ async function handleConversation(req, res, sessionId, env, authInfo, anonymousS
   });
 
   if (!session) {
-    throw createError('AI agent session not found', 404, 'SESSION_NOT_FOUND');
+    return res.status(404).json({
+      success: false,
+      error: 'AI agent session not found',
+      code: 'SESSION_NOT_FOUND'
+    });
   }
 
-  return jsonResponse(res, {
+  const responseData: ConversationResponse = {
     success: true,
     session: {
       id: session.id,
@@ -224,10 +312,12 @@ async function handleConversation(req, res, sessionId, env, authInfo, anonymousS
       endedAt: session.endedAt,
       duration: session.duration,
       messageCount: session.messageCount,
-      tokenUsage: session.tokenUsage,
+      tokenUsage: session.tokenUsage || 0,
     },
     conversation: session.conversation || [],
     messages: session.chatMessages,
     isAuthenticated: authInfo.isAuthenticated,
-  });
+  };
+
+  res.status(200).json(createSuccessResponse(responseData));
 } 
