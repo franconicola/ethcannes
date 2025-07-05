@@ -67,7 +67,7 @@ export default function SessionsPage() {
       setError(null)
       
       const token = await getAccessToken()
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'}/users/sessions?page=${page}&limit=${pagination.limit}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api'}/users/sessions?page=${page}&limit=${pagination.limit}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -112,7 +112,7 @@ export default function SessionsPage() {
       setDeletingSession(sessionId)
       
       const token = await getAccessToken()
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'}/sessions/${sessionId}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api'}/sessions/${sessionId}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -161,7 +161,7 @@ export default function SessionsPage() {
       setBulkDeleting(true)
       
       const token = await getAccessToken()
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'}/sessions/bulk`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api'}/sessions/bulk`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',

@@ -50,7 +50,7 @@ export function useAvatarPagination(options: UseAvatarPaginationOptions = {}): U
         limit: initialLimit,
       })
 
-      const primaryApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+      const primaryApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api'
       const finalUrl = buildApiUrl().replace(apiUrl, primaryApiUrl)
       console.log(`🔄 Trying API at: ${finalUrl}`)
 

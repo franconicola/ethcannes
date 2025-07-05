@@ -29,7 +29,7 @@ export default function CreditsDisplay() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api'
 
   useEffect(() => {
     const fetchCredits = async () => {

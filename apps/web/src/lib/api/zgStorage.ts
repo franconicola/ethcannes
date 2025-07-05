@@ -3,7 +3,7 @@
 // API Configuration - use backend API for 0G Storage
 const API_CONFIG = {
   baseUrl: (typeof window !== 'undefined' && window.location.origin.includes('localhost')) 
-    ? "http://localhost:3001/api" 
+    ? "http://localhost:3000/api" 
     : "/api",
 };
 

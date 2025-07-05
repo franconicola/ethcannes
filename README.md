@@ -77,6 +77,9 @@ NEXT_PUBLIC_PRIVY_APP_ID="your_privy_app_id"
 # JWT Secret
 JWT_SECRET="your_jwt_secret_key"
 
+# API Configuration (optional - defaults to same port as Next.js app)
+NEXT_PUBLIC_API_URL="http://localhost:3000/api"
+
 # LiveKit (optional)
 LIVEKIT_API_KEY="your_livekit_api_key"
 LIVEKIT_API_SECRET="your_livekit_api_secret"
