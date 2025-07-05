@@ -22,6 +22,9 @@ import {
     EnvVars
 } from '../../../lib/api/types';
 
+// Force Node.js runtime (required for Prisma)
+export const runtime = 'nodejs';
+
 export default async function handler(
   req: NextApiRequest, 
   res: NextApiResponse<ApiResponse<CreateSessionResponse>>

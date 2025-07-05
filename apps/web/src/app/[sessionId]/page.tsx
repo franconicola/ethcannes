@@ -9,7 +9,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 // Edge Runtime configuration for Cloudflare Pages
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 interface Avatar {
   id: string

@@ -23,7 +23,7 @@ interface UseAvatarPaginationReturn {
 }
 
 export function useAvatarPagination(options: UseAvatarPaginationOptions = {}): UseAvatarPaginationReturn {
-  const { initialPage = 1, initialLimit = 12, apiUrl = '/api' } = options
+  const { initialPage = 1, initialLimit = 12 } = options
 
   // State
   const [avatars, setAvatars] = useState<Avatar[]>([])
@@ -32,26 +32,20 @@ export function useAvatarPagination(options: UseAvatarPaginationOptions = {}): U
   const [error, setError] = useState<string | null>(null)
   const [currentPage, setCurrentPage] = useState(initialPage)
 
-  // Build API URL with parameters
-  const buildApiUrl = useCallback(() => {
-    const params = new URLSearchParams()
-    params.set('page', currentPage.toString())
-    params.set('limit', initialLimit.toString())
-    return `${apiUrl}/agents/public?${params.toString()}`
-  }, [apiUrl, currentPage, initialLimit])
-
   const loadAvatars = useCallback(
-    async (signal: AbortSignal) => {
+    async (signal: AbortSignal, page: number, limit: number) => {
       setLoading(true)
       setError(null)
       
-      console.log('🔄 Loading avatars:', {
-        page: currentPage,
-        limit: initialLimit,
-      })
+      console.log('🔄 Loading avatars:', { page, limit })
 
+      // Build API URL directly to avoid circular dependencies
+      const params = new URLSearchParams()
+      params.set('page', page.toString())
+      params.set('limit', limit.toString())
+      
       const primaryApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api'
-      const finalUrl = buildApiUrl().replace(apiUrl, primaryApiUrl)
+      const finalUrl = `${primaryApiUrl}/agents/public?${params.toString()}`
       console.log(`🔄 Trying API at: ${finalUrl}`)
 
       try {
@@ -89,17 +83,17 @@ export function useAvatarPagination(options: UseAvatarPaginationOptions = {}): U
         setLoading(false)
       }
     },
-    [currentPage, initialLimit, apiUrl],
+    [], // No dependencies to prevent infinite loops
   )
 
   useEffect(() => {
     const controller = new AbortController()
-    loadAvatars(controller.signal)
+    loadAvatars(controller.signal, currentPage, initialLimit)
 
     return () => {
       controller.abort()
     }
-  }, [loadAvatars])
+  }, [loadAvatars, currentPage, initialLimit])
 
   // Actions
   const setPage = useCallback((page: number) => {
@@ -112,8 +106,8 @@ export function useAvatarPagination(options: UseAvatarPaginationOptions = {}): U
 
   const reload = useCallback(() => {
     const controller = new AbortController()
-    loadAvatars(controller.signal)
-  }, [loadAvatars])
+    loadAvatars(controller.signal, currentPage, initialLimit)
+  }, [loadAvatars, currentPage, initialLimit])
 
   return {
     // Data

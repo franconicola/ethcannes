@@ -9,6 +9,9 @@ import {
 import { getAvailableAgents } from '../../../lib/api/services/aiAgentService';
 import { AIAgent, ApiResponse, PaginationParams, PublicAgentsResponse } from '../../../lib/api/types';
 
+// Force Node.js runtime (required for Prisma)
+export const runtime = 'nodejs';
+
 // Helper function to parse pagination parameters
 function parsePaginationParams(req: NextApiRequest): PaginationParams {
   const { page = '1', limit = '12', search, personality, style } = req.query;
