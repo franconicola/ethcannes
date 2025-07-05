@@ -234,9 +234,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       }
 
       // Store the backend's anonymousSessionId for future requests (if anonymous user)
-      if (!isAuthenticated && response.anonymousSessionId) {
-        console.log('💾 Storing backend anonymousSessionId for future requests:', response.anonymousSessionId)
-        localStorage.setItem('backend-anonymous-session-id', response.anonymousSessionId)
+      if (!isAuthenticated && sessionData.anonymousSessionId) {
+        console.log('💾 Storing backend anonymousSessionId for future requests:', sessionData.anonymousSessionId)
+        localStorage.setItem('backend-anonymous-session-id', sessionData.anonymousSessionId)
       }
 
       console.log('✅ Agent session created successfully:', {

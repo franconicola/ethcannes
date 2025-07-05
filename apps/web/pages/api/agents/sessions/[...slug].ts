@@ -1,25 +1,25 @@
 // Dynamic agent sessions endpoint for chat, stop, and conversation
 import { NextApiRequest, NextApiResponse } from 'next';
 import {
-    errorResponse,
-    getAnonymousSessionId,
-    getAuthHeader,
-    getEnvVars,
-    getPrismaClient,
-    handleCORS,
-    safeParseJSON,
-    validateRequiredFields
+  errorResponse,
+  getAnonymousSessionId,
+  getAuthHeader,
+  getEnvVars,
+  getPrismaClient,
+  handleCORS,
+  safeParseJSON,
+  validateRequiredFields
 } from '../../../../lib/api/middleware';
 import { validatePrivyToken } from '../../../../lib/api/services/authService';
 import { getOrCreateAnonymousSession } from '../../../../lib/api/services/sessionService';
 import {
-    ApiResponse,
-    AuthInfo,
-    ChatRequest,
-    ChatResponse,
-    ConversationResponse,
-    EnvVars,
-    StopSessionResponse
+  ApiResponse,
+  AuthInfo,
+  ChatRequest,
+  ChatResponse,
+  ConversationResponse,
+  EnvVars,
+  StopSessionResponse
 } from '../../../../lib/api/types';
 
 // Force Node.js runtime (required for Prisma)
@@ -115,11 +115,22 @@ async function handleChat(
   // Build where clause based on authentication status
   const whereClause: any = { id: sessionId };
   
+  console.log('🔍 Chat access check:', {
+    sessionId,
+    isAuthenticated: authInfo.isAuthenticated,
+    hasAnonymousSession: !!anonymousSession,
+    anonymousSessionId: anonymousSession?.id,
+    anonymousSessionIdentifier: anonymousSession?.sessionIdentifier
+  });
+  
   if (authInfo.isAuthenticated && authInfo.user) {
     whereClause.userId = authInfo.user.id;
+    console.log('✅ Using authenticated user access');
   } else if (anonymousSession) {
     whereClause.anonymousSessionId = anonymousSession.id;
+    console.log('✅ Using anonymous session access:', anonymousSession.id);
   } else {
+    console.log('❌ No valid authentication method found');
     return res.status(403).json({
       success: false,
       error: 'Session access denied',
@@ -128,17 +139,35 @@ async function handleChat(
   }
 
   // Find the session
+  console.log('🔍 Looking for session with where clause:', whereClause);
   const session = await prisma.agentSession.findFirst({
     where: whereClause
   });
+  
+  console.log('🔍 Session found:', {
+    found: !!session,
+    sessionId: session?.id,
+    anonymousSessionId: session?.anonymousSessionId,
+    userId: session?.userId
+  });
 
   if (!session) {
+    console.log('❌ Session not found with where clause:', whereClause);
     return res.status(404).json({
       success: false,
       error: 'AI agent session not found',
       code: 'SESSION_NOT_FOUND'
     });
   }
+
+  // Add debugging for the session that was found
+  console.log('✅ Session found successfully:', {
+    sessionId: session.id,
+    agentId: session.agentId,
+    anonymousSessionId: session.anonymousSessionId,
+    userId: session.userId,
+    status: session.status
+  });
 
   // For now, return a simple echo response
   // In a real implementation, you'd integrate with the AI service

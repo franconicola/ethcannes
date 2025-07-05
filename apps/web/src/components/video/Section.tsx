@@ -35,36 +35,40 @@ export function VideoSection({
         </div>
       </CardHeader>
       <CardContent className="h-[calc(100%-5rem)] p-4">
-        <div className="w-full h-full rounded-lg bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 flex items-center justify-center relative overflow-hidden">
+        <div className="w-full h-full rounded-lg bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 flex items-center justify-center relative overflow-hidden min-h-[400px]">
           
           {/* Avatar Display */}
           {currentAvatar && (currentAvatar.image || currentAvatar.gifUrl) && (
-            <div className="relative w-full h-full">
+            <div className="relative flex items-center justify-center w-full h-full">
               {/* Static Image - shown when not speaking */}
               {currentAvatar.image && !imageError && !speaking && (
-                <Image
-                  src={currentAvatar.image}
-                  alt={currentAvatar.name}
-                  fill
-                  className="object-cover transition-all duration-300"
-                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 60vw, 40vw"
-                  onError={handleImageError}
-                  priority
-                />
+                <div className="relative w-64 h-64 sm:w-80 sm:h-80 rounded-full overflow-hidden shadow-2xl">
+                  <Image
+                    src={currentAvatar.image}
+                    alt={currentAvatar.name}
+                    width={320}
+                    height={320}
+                    className="object-cover w-full h-full transition-all duration-300"
+                    onError={handleImageError}
+                    priority
+                  />
+                </div>
               )}
               
               {/* Animated GIF - shown when speaking */}
               {currentAvatar.gifUrl && !gifError && speaking && (
-                <Image
-                  src={currentAvatar.gifUrl}
-                  alt={`${currentAvatar.name} speaking`}
-                  fill
-                  className="object-cover transition-all duration-300"
-                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 60vw, 40vw"
-                  onError={handleGifError}
-                  priority
-                  unoptimized // Important for GIFs to maintain animation
-                />
+                <div className="relative w-64 h-64 sm:w-80 sm:h-80 rounded-full overflow-hidden shadow-2xl">
+                  <Image
+                    src={currentAvatar.gifUrl}
+                    alt={`${currentAvatar.name} speaking`}
+                    width={320}
+                    height={320}
+                    className="object-cover w-full h-full transition-all duration-300"
+                    onError={handleGifError}
+                    priority
+                    unoptimized // Important for GIFs to maintain animation
+                  />
+                </div>
               )}
               
               {/* Overlay for speaking state */}
