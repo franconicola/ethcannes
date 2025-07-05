@@ -76,7 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
   const [authError, setAuthError] = useState<string | null>(null)
 
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8787/api'
 
   // Fetch user data from our API
   const fetchUser = useCallback(async () => {
@@ -380,7 +380,7 @@ export default function AuthProviderWrapper({ children }: { children: ReactNode 
             <div className="text-xs text-left bg-muted p-3 rounded">
               <pre>{`# apps/web/.env.local
 NEXT_PUBLIC_PRIVY_APP_ID="your-app-id-here"
-NEXT_PUBLIC_API_URL="http://localhost:3001/api"`}</pre>
+NEXT_PUBLIC_API_URL="http://localhost:8787/api"`}</pre>
             </div>
           </div>
         </div>

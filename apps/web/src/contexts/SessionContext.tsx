@@ -8,7 +8,7 @@ import { createContext, ReactNode, useCallback, useContext, useEffect, useRef, u
 // API Configuration
 const API_CONFIG = {
   baseUrl: (typeof window !== 'undefined' && window.location.origin.includes('localhost')) 
-    ? "http://localhost:3001/api" 
+    ? "http://localhost:8787/api" 
     : "/api",
 }
 

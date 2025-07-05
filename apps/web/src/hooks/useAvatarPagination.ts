@@ -84,10 +84,10 @@ export function useAvatarPagination(options: UseAvatarPaginationOptions = {}): U
       // API fallback logic (similar to your existing code)
       const primaryApiUrl = process.env.NODE_ENV === 'production' 
         ? 'https://sparkmind-api.workers.dev'
-        : 'http://localhost:3001'
+        : 'http://localhost:8787'
       
       const fallbackUrls = process.env.NODE_ENV === 'development' ? [
-        "http://localhost:3001",
+        "http://localhost:8787",
         "http://localhost:3000"
       ] : []
       

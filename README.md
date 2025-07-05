@@ -82,7 +82,7 @@ LIVEKIT_WS_URL="wss://your-livekit-server.livekit.cloud"
 ### Web (.env.local)
 ```bash
 NEXT_PUBLIC_PRIVY_APP_ID="your_privy_app_id"
-NEXT_PUBLIC_API_URL="http://localhost:3001/api"
+NEXT_PUBLIC_API_URL="http://localhost:8787/api"
 ```
 
 
@@ -120,7 +120,7 @@ npm run dev
 
 # Or start individually:
 npm run dev:web    # Web app at http://localhost:3000
-npm run dev:api    # API at http://localhost:3001
+npm run dev:api    # API at http://localhost:8787
 ```
 
 ## ☁️ Cloudflare Deployment

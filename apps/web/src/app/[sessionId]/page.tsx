@@ -51,7 +51,7 @@ export default function SessionPage() {
         setLoadingAvatars(true)
         setAvatarError(null)
         
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api"
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8787/api"
         const response = await fetch(`${apiUrl}/avatars/public`)
         if (!response.ok) {
           throw new Error(`Failed to load avatars: ${response.statusText}`)
