@@ -34,11 +34,18 @@ interface SessionContextType {
   loading: boolean
   error: string | null
   chatting: boolean
+  speaking: boolean  // Add for backwards compatibility
+  wsConnected: boolean  // Add WebSocket connection state
+  navigating: boolean  // Add navigation state
+  freeLimitExceeded: boolean  // Add free limit state
   createSession: (agentId: string) => Promise<AIAgentSession>
   sendMessage: (message: string) => Promise<void>
+  sendText: (message: string) => Promise<void>  // Add alias for sendMessage
   stopSession: () => Promise<void>
+  closeSession: () => Promise<void>  // Add alias for stopSession
   clearError: () => void
   resetSession: () => void
+  dismissFreeLimitModal: () => void  // Add free limit modal dismiss
 }
 
 const SessionContext = createContext<SessionContextType | null>(null)
@@ -48,6 +55,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [chatting, setChatting] = useState(false)
+  const [navigating, setNavigating] = useState(false)  // Add navigation state
+  const [freeLimitExceeded, setFreeLimitExceeded] = useState(false)  // Add free limit state
   const sessionCreationInProgress = useRef<boolean>(false)
   const sessionRef = useRef<AIAgentSession | null>(null)
   const router = useRouter()
@@ -74,9 +83,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     sessionRef.current = session
   }, [session])
 
-  // Clear any existing errors
-  const clearError = () => setError(null)
-
   // Enhanced error handling function
   const handleError = (err: any, context: string) => {
     console.error(`❌ ${context}:`, err)
@@ -87,11 +93,23 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         errorMessage.includes('maximum number of messages') ||
         errorMessage.includes('Please log in to continue')) {
       console.log('🚫 Free limit exceeded detected, showing modal')
+      setFreeLimitExceeded(true)
       // Don't set this as a regular error since we're showing a modal
       return
     }
     
     setError(errorMessage)
+  }
+
+  // Clear any existing errors
+  const clearError = () => {
+    setError(null)
+    setFreeLimitExceeded(false)
+  }
+
+  // Dismiss free limit modal
+  const dismissFreeLimitModal = () => {
+    setFreeLimitExceeded(false)
   }
 
   // Make request to backend (supports both authenticated and anonymous users)
@@ -111,6 +129,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         }
       } catch (error) {
         console.log('Could not get access token:', error)
+      }
+    } else {
+      // For anonymous users, add the stored backend session ID
+      const backendSessionId = localStorage.getItem('backend-anonymous-session-id')
+      if (backendSessionId) {
+        headers['X-Anonymous-Session-Id'] = backendSessionId
       }
     }
     
@@ -230,11 +254,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       setChatting(false)
       
       console.log('🧭 Navigating to session page:', `/${newSession.sessionId}`)
-      // Navigate to session page
+      // Set navigating state and navigate to session page
+      setNavigating(true)
       router.push(`/${newSession.sessionId}`)
       
-      // Set a timeout to clear the chatting state in case navigation completes
+      // Clear the navigating state after navigation
       setTimeout(() => {
+        setNavigating(false)
         setChatting(false)
       }, 2000)
       
@@ -277,13 +303,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       setChatting(true)
       setError(null)
 
-      console.log('💬 Using AI Agent talk endpoint with proper tracking')
-      // Use the AI agent talk endpoint that supports both authenticated and anonymous users
-      const response = await makeRequest(`/agents/sessions/${session.sessionId}/talk`, {
+      console.log('💬 Using AI Agent chat endpoint with proper tracking')
+      // Use the AI agent chat endpoint that supports both authenticated and anonymous users
+      const response = await makeRequest(`/agents/sessions/${session.sessionId}/chat`, {
         method: 'POST',
         body: JSON.stringify({
           message,
-          taskType: 'talk'
         }),
       })
       
@@ -451,11 +476,18 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     loading,
     error,
     chatting,
+    speaking: chatting,  // Use chatting state for speaking
+    wsConnected: !!session,  // Connected if we have an active session
+    navigating,
+    freeLimitExceeded,
     createSession,
     sendMessage,
+    sendText: sendMessage,  // Alias for backwards compatibility
     stopSession,
+    closeSession: stopSession,  // Alias for backwards compatibility
     clearError,
     resetSession: () => setSession(null),
+    dismissFreeLimitModal,
   }
 
   return (

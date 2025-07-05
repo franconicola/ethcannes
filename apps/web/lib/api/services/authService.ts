@@ -1,9 +1,20 @@
 // Authentication service
-import { PrivyClient } from '@privy-io/server-auth';
 import { AuthInfo, EnvVars } from '../types';
 
+// Handle the Privy import issue gracefully
+let PrivyClient: any = null;
+try {
+  const { PrivyClient: PrivyClientClass } = require('@privy-io/server-auth');
+  PrivyClient = PrivyClientClass;
+} catch (error) {
+  console.warn('Failed to import PrivyClient:', error);
+}
+
 // Create Privy client instance
-function createPrivyClient(env: EnvVars): PrivyClient {
+function createPrivyClient(env: EnvVars): any {
+  if (!PrivyClient) {
+    throw new Error('PrivyClient not available due to dependency issues');
+  }
   return new PrivyClient(env.PRIVY_APP_ID, env.PRIVY_APP_SECRET);
 }
 
@@ -12,6 +23,12 @@ export async function validatePrivyToken(
   authHeader: string | undefined, 
   env: EnvVars
 ): Promise<AuthInfo> {
+  // If Privy is not available, return unauthenticated
+  if (!PrivyClient) {
+    console.warn('Privy authentication unavailable, returning unauthenticated');
+    return { isAuthenticated: false };
+  }
+
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return { isAuthenticated: false };
   }
