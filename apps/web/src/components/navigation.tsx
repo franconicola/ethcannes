@@ -14,13 +14,15 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { SidebarTrigger } from '@/components/ui/sidebar'
 import { useAuth } from '@/contexts/AuthContext'
-import { usePrivy } from '@privy-io/react-auth'
+import { useConnectWallet, usePrivy, useWallets } from '@privy-io/react-auth'
 import { ChevronDown, CreditCard, LogOut, Settings, User } from 'lucide-react'
 import Link from 'next/link'
 
 export function Navigation() {
   const { isAuthenticated, login, logout, user } = useAuth()
-  const { user: privyUser } = usePrivy()
+  const { user: privyUser, authenticated } = usePrivy()
+  const { wallets } = useWallets()
+  const { connectWallet } = useConnectWallet()
 
   // Helper function to extract proper initials from user name
   const getInitials = (user: any, privyUser: any) => {
@@ -103,11 +105,27 @@ export function Navigation() {
       if (walletAccount?.address) return walletAccount.address
     }
     
+    // Fall back to connected wallets from useWallets hook
+    if (wallets.length > 0) {
+      return wallets[0].address
+    }
+    
     return null
   }
 
-  // Check if user has a connected wallet
-  const hasConnectedWallet = getWalletAddress(user, privyUser) !== null
+  // Check if user has a connected wallet - use both our DB and Privy wallets
+  const hasConnectedWallet = getWalletAddress(user, privyUser) !== null || wallets.length > 0
+
+  // Handle wallet connection logic
+  const handleWalletAction = () => {
+    if (!authenticated) {
+      // User not authenticated at all - need to login first
+      login()
+    } else if (!hasConnectedWallet) {
+      // User authenticated but no wallet - connect wallet
+      connectWallet()
+    }
+  }
 
   return (
     <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
@@ -134,8 +152,13 @@ export function Navigation() {
             )}
             
             <ThemeToggle />
-            {!isAuthenticated ? (
-              <Button onClick={login} size="sm" className="text-xs lg:text-sm gap-2">
+            {!authenticated ? (
+              <Button onClick={handleWalletAction} size="sm" className="text-xs lg:text-sm gap-2">
+                <CreditCard className="h-4 w-4" />
+                Connect Wallet
+              </Button>
+            ) : !hasConnectedWallet ? (
+              <Button onClick={handleWalletAction} size="sm" className="text-xs lg:text-sm gap-2">
                 <CreditCard className="h-4 w-4" />
                 Connect Wallet
               </Button>
@@ -219,6 +242,11 @@ export function Navigation() {
                       <Settings className="mr-2 h-4 w-4" />
                       <span>Settings</span>
                     </Link>
+                  </DropdownMenuItem>
+                  {/* @ts-ignore */}
+                  <DropdownMenuItem onClick={connectWallet}>
+                    <CreditCard className="mr-2 h-4 w-4" />
+                    <span>Connect Another Wallet</span>
                   </DropdownMenuItem>
                   {/* @ts-ignore */}
                   <DropdownMenuSeparator />

@@ -168,10 +168,14 @@ export interface CreateSessionResponse {
   session: {
     id: string;
     agentId: string;
+    agentName: string;
     status: string;
     createdAt: Date;
     messageCount: number;
     tokenUsage: number;
+    conversation: ConversationMessage[];
+    isAuthenticated: boolean;
+    freeMessagesRemaining: number;
   };
 }
 
