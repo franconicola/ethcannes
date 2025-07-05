@@ -6,7 +6,6 @@ import { Card, CardContent, CardTitle } from '@/components/ui/card'
 import { Loader } from '@/components/ui/loader'
 import Image from 'next/image'
 import { useState } from 'react'
-import { VideoPreview } from '../video/Preview'
 import type { AvatarCardProps } from './types'
 import { VerificationBadge } from './VerificationBadge'
 
@@ -20,6 +19,8 @@ export function AvatarCard({
 }: AvatarCardProps) {
   const [imageLoading, setImageLoading] = useState(true)
   const [imageError, setImageError] = useState(false)
+  const [gifLoading, setGifLoading] = useState(true)
+  const [gifError, setGifError] = useState(false)
   const isDisabled = loading || hasReachedFreeLimit
   const isCurrentlyLoading = sessionLoading && selectedAvatarId === avatar.id
 
@@ -31,6 +32,16 @@ export function AvatarCard({
   const handleImageError = () => {
     setImageLoading(false)
     setImageError(true)
+  }
+
+  const handleGifLoad = () => {
+    setGifLoading(false)
+    setGifError(false)
+  }
+
+  const handleGifError = () => {
+    setGifLoading(false)
+    setGifError(true)
   }
 
   return (
@@ -60,7 +71,7 @@ export function AvatarCard({
           </div>
         )}
         
-        {/* Static image - shown by default */}
+        {/* Static placeholder image - shown by default */}
         {avatar.image && !imageError && (
           <Image 
             src={avatar.image} 
@@ -74,16 +85,23 @@ export function AvatarCard({
           />
         )}
         
-        {/* Video preview - only shown on hover */}
-        {avatar.preview_video && (
-          <VideoPreview
-            src={avatar.preview_video}
-            className="absolute inset-0 w-full h-full object-cover transition-all duration-300 opacity-0 group-hover:opacity-100"
+        {/* Animated GIF - only shown on hover */}
+        {avatar.gifUrl && !gifError && (
+          <Image
+            src={avatar.gifUrl}
+            alt={`${avatar.name} animated`}
+            fill
+            className="object-cover transition-all duration-300 opacity-0 group-hover:opacity-100"
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+            onLoad={handleGifLoad}
+            onError={handleGifError}
+            priority={false}
+            unoptimized // Important for GIFs to maintain animation
           />
         )}
         
-        {/* Fallback content - shown when no image/video or image failed to load */}
-        {(!avatar.image || imageError) && !avatar.preview_video && (
+        {/* Fallback content - shown when no image/gif or both failed to load */}
+        {(!avatar.image || imageError) && (!avatar.gifUrl || gifError) && (
           <div className="flex items-center justify-center text-primary-foreground">
             {/* @ts-ignore */}
             <Avatar className="w-16 h-16 lg:w-20 lg:h-20">
@@ -95,12 +113,17 @@ export function AvatarCard({
           </div>
         )}
 
-        {/* Image error indicator */}
-        {imageError && (
+        {/* Loading/Error indicators */}
+        {(imageError || gifError) && (
           <div className="absolute top-2 right-2 text-xs text-white bg-red-500/80 px-2 py-1 rounded">
-            Image failed to load
+            {imageError && gifError ? 'Media failed to load' : 'Some media failed'}
           </div>
         )}
+
+        {/* Hover hint */}
+        <div className="absolute bottom-2 left-2 text-xs text-white bg-black/50 px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+          🎬 Hover for animation
+        </div>
       </div>
       
       <CardContent className="p-3 lg:p-4">

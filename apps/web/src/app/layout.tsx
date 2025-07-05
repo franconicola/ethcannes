@@ -14,7 +14,7 @@ const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: 'SparkMind',
-  description: 'Connect with AI avatars in real-time conversations',
+  description: 'Connect with AI tutors in real-time conversations',
   icons: {
     icon: [
       { url: '/favicon.ico' },
@@ -37,6 +37,45 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              // Early wallet setup to prevent MetaMask conflicts
+              (function() {
+                if (typeof window === 'undefined') return;
+                
+                try {
+                  // Check if window.ethereum exists and is read-only
+                  const descriptor = Object.getOwnPropertyDescriptor(window, 'ethereum');
+                  
+                  if (descriptor && !descriptor.configurable) {
+                    console.log('🔧 Early fixing MetaMask ethereum property...');
+                    
+                    // Store existing ethereum object
+                    const existingEthereum = window.ethereum;
+                    
+                    // Delete the read-only property
+                    delete window.ethereum;
+                    
+                    // Redefine it as configurable
+                    Object.defineProperty(window, 'ethereum', {
+                      value: existingEthereum,
+                      writable: true,
+                      configurable: true,
+                      enumerable: true
+                    });
+                    
+                    console.log('✅ Early MetaMask ethereum property fixed');
+                  }
+                } catch (error) {
+                  console.warn('⚠️ Early wallet setup failed:', error);
+                }
+              })();
+            `,
+          }}
+        />
+      </head>
       <body className={inter.className}>
         <ThemeProvider
           attribute="class"

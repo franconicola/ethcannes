@@ -1,5 +1,6 @@
 'use client'
 
+import { initializeWalletSetup } from '@/lib/wallet-setup'
 import { PrivyProvider, useLogin, useLogout, usePrivy } from '@privy-io/react-auth'
 import { createContext, ReactNode, useCallback, useContext, useEffect, useState } from 'react'
 
@@ -350,6 +351,8 @@ export default function AuthProviderWrapper({ children }: { children: ReactNode 
   
   // Only initialize Privy on the client side
   useEffect(() => {
+    // Initialize wallet setup first to prevent MetaMask conflicts
+    initializeWalletSetup()
     setIsClient(true)
   }, [])
   
@@ -420,7 +423,7 @@ NEXT_PUBLIC_API_URL="http://localhost:3000/api"`}</pre>
           theme: 'light',
           accentColor: '#0094FF',
         },
-        // Add wallet connectors
+        // Add wallet connectors with better MetaMask handling
         supportedChains: [
           {
             id: 1,
@@ -437,6 +440,8 @@ NEXT_PUBLIC_API_URL="http://localhost:3000/api"`}</pre>
             rpcUrls: { default: { http: ['https://polygon-rpc.com'] } },
           },
         ],
+        // Configure wallet connectors to avoid conflicts
+        walletConnectCloudProjectId: process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID,
       }}
     >
       <AuthProvider>

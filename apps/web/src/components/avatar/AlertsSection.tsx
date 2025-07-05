@@ -53,11 +53,11 @@ export function AlertsSection({
       {avatarError && (
         <Alert variant="destructive" className="mb-6 max-w-6xl mx-auto">
           <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>Avatar Loading Error</AlertTitle>
+                      <AlertTitle>AI Tutor Loading Error</AlertTitle>
           <AlertDescription className="space-y-3">
             <div className="flex items-start justify-between">
               <div className="flex-1">
-                <p className="font-medium">Failed to load avatars:</p>
+                <p className="font-medium">Failed to load AI tutors:</p>
                 <p className="text-sm text-muted-foreground mt-1">{avatarError}</p>
               </div>
               <Button variant="outline" size="sm" onClick={onClearAvatarError} className="ml-4">

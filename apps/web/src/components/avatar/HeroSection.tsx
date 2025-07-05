@@ -15,14 +15,14 @@ export function HeroSection({ isAuthenticated, user, anonymousSession }: HeroSec
       <Card className="mb-6 lg:mb-8 mx-4 lg:mx-8 border-none shadow-none bg-transparent">
         <CardHeader className="space-y-4 py-6">
           <CardTitle className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground">
-            Choose Your Avatar
+            Choose Your AI Tutor
           </CardTitle>
           <CardDescription className="text-lg md:text-xl max-w-4xl mx-auto text-muted-foreground">
             {isAuthenticated 
-              ? "Select an avatar to start your conversation."
+                            ? "Select an AI tutor to start your conversation."
               : anonymousSession
-                ? `Try our AI avatars for free! You have ${anonymousSession.freeMessagesRemaining} free messages remaining.`
-                : "Try our AI avatars for free! Start chatting with AI avatars and discover amazing conversations."
+              ? `Try our AI tutors for free! You have ${anonymousSession.freeMessagesRemaining} free messages remaining.`
+              : "Try our AI tutors for free! Start chatting with AI tutors and discover amazing conversations."
             }
           </CardDescription>
           <div className="flex items-center justify-center gap-1 mt-2">

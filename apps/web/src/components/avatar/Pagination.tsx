@@ -68,7 +68,7 @@ export function AvatarPagination({ pagination, onPageChange, disabled = false }:
       <div className="text-sm text-muted-foreground order-2 sm:order-1">
         Showing <span className="font-medium">{startItem}</span> to{' '}
         <span className="font-medium">{endItem}</span> of{' '}
-        <span className="font-medium">{total}</span> avatars
+                    <span className="font-medium">{total}</span> AI tutors
       </div>
 
       {/* Pagination controls */}

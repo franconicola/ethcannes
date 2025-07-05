@@ -3,8 +3,12 @@ export interface Avatar {
   name: string
   description: string
   previewUrl?: string
+  image?: string // Static placeholder image URL
+  gifUrl?: string // Animated GIF URL for hover effect
   style?: string
   personality?: string
+  educationalLevel?: string
+  subjects?: string[]
 }
 
 export interface PaginationMeta {
@@ -21,9 +25,10 @@ export interface PaginationMeta {
 export interface AvatarCardProps {
   avatar: Avatar
   loading: boolean
-  isSelected: boolean
-  onStartChat: (id: string) => void
   hasReachedFreeLimit: boolean
+  sessionLoading: boolean
+  selectedAvatarId: string | null
+  onStartChat: (id: string) => void
 }
 
 export interface AvatarGridProps {
