@@ -1,12 +1,14 @@
 'use client'
 
+import { PromptManager } from '@/components/admin/PromptManager'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useAuth } from '@/contexts/AuthContext'
-import { BookOpen, Info, Settings, Shield, Users } from 'lucide-react'
-import { useState } from 'react'
+import { getStorageStatus, StorageStatus } from '@/lib/api/zgStorage'
+import { AlertCircle, BookOpen, CheckCircle, Info, Settings, Shield, Users } from 'lucide-react'
+import { useEffect, useState } from 'react'
 
 // Edge Runtime configuration for Cloudflare Pages
 export const runtime = 'edge';
@@ -14,6 +16,24 @@ export const runtime = 'edge';
 export default function AdminPage() {
   const { isAuthenticated, user } = useAuth()
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null)
+  const [storageStatus, setStorageStatus] = useState<StorageStatus | null>(null)
+  const [statusLoading, setStatusLoading] = useState(true)
+
+  // Check 0G Storage status on component mount
+  useEffect(() => {
+    const checkStatus = async () => {
+      try {
+        const status = await getStorageStatus()
+        setStorageStatus(status)
+      } catch (error) {
+        console.error('Failed to get storage status:', error)
+        setStorageStatus(null)
+      } finally {
+        setStatusLoading(false)
+      }
+    }
+    checkStatus()
+  }, [])
 
   // Mock agents data - in real app, this would come from your API
   const agents = [
@@ -78,6 +98,27 @@ export default function AdminPage() {
           </p>
         </div>
 
+        {/* 0G Storage Status Alert */}
+        {!statusLoading && (
+          <div className="mb-6">
+            {storageStatus?.serviceAvailable ? (
+              <Alert>
+                <CheckCircle className="h-4 w-4" />
+                <AlertDescription>
+                  0G Storage is operational. Network: {storageStatus.network.rpcUrl}
+                </AlertDescription>
+              </Alert>
+            ) : (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  0G Storage is not available. Check your API connection.
+                </AlertDescription>
+              </Alert>
+            )}
+          </div>
+        )}
+
         {/* Overview Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <Card>
@@ -112,7 +153,7 @@ export default function AdminPage() {
                 <div>
                   <p className="text-sm text-muted-foreground">0G Storage</p>
                   <p className="text-2xl font-bold text-blue-600">
-                    {agents.filter(a => a.promptHash).length}
+                    {storageStatus?.statistics?.totalStoredPrompts || 0}
                   </p>
                 </div>
                 <BookOpen className="h-8 w-8 text-blue-600" />
@@ -198,7 +239,7 @@ export default function AdminPage() {
                           onClick={() => setSelectedAgent(agent.id)}
                           className="px-3 py-2 text-sm bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
                         >
-                          Manage Prompt
+                          Manage
                         </button>
                       </div>
                     </div>
@@ -210,69 +251,13 @@ export default function AdminPage() {
 
           {/* @ts-ignore */}
           <TabsContent value="prompt-manager" className="space-y-6">
-            {selectedAgent ? (
-              <div className="space-y-4">
-                <Alert>
-                  <Info className="h-4 w-4" />
-                  <AlertDescription>
-                    Managing prompts for agent: <strong>{selectedAgent}</strong>
-                  </AlertDescription>
-                </Alert>
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Shield className="h-5 w-5" />
-                      0G Storage Integration
-                    </CardTitle>
-                    <CardDescription>
-                      AI Tutor prompt management with decentralized storage
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <Alert>
-                      <Info className="h-4 w-4" />
-                      <AlertDescription>
-                        0G Storage integration is currently being optimized for Edge Runtime compatibility. 
-                        Full functionality will be available in server-side environments.
-                      </AlertDescription>
-                    </Alert>
-                    <div className="mt-6 space-y-4">
-                      <div>
-                        <h4 className="font-semibold mb-2">Planned Features</h4>
-                        <ul className="space-y-1 text-sm text-muted-foreground">
-                          <li>• Store AI system prompts on decentralized storage</li>
-                          <li>• Verify prompt integrity with cryptographic hashes</li>
-                          <li>• Educational content safety validation</li>
-                          <li>• Immutable audit trail for AI behavior</li>
-                        </ul>
-                      </div>
-                      <div>
-                        <h4 className="font-semibold mb-2">Current Status</h4>
-                        <Badge variant="outline">
-                          Building Edge Runtime compatibility
-                        </Badge>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            ) : (
-              <Card>
-                <CardContent className="p-8 text-center">
-                  <Shield className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">Select an Agent</h3>
-                  <p className="text-muted-foreground mb-4">
-                    Choose an AI tutor agent from the overview tab to manage its system prompts
-                  </p>
-                  <button
-                    onClick={() => setSelectedAgent('new-agent')}
-                    className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
-                  >
-                    Create New Agent
-                  </button>
-                </CardContent>
-              </Card>
-            )}
+            <PromptManager 
+              agentId={selectedAgent || undefined}
+              onPromptStored={(storedPrompt) => {
+                console.log('Prompt stored:', storedPrompt)
+                // Could refresh the agents list here
+              }}
+            />
           </TabsContent>
 
           {/* @ts-ignore */}
@@ -281,52 +266,69 @@ export default function AdminPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Info className="h-5 w-5" />
-                  0G Storage Integration for Educational AI
+                  About 0G Storage Integration
                 </CardTitle>
                 <CardDescription>
-                  Understanding how decentralized storage ensures AI tutor safety and transparency
+                  Understanding how SparkMind uses 0G Storage for AI tutor verification
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-4">
+              <CardContent className="space-y-4">
+                <div className="space-y-6">
                   <div>
-                    <h4 className="font-semibold mb-2">🔒 Why 0G Storage for AI Tutors?</h4>
-                    <ul className="space-y-2 text-sm text-muted-foreground">
-                      <li>• <strong>Immutability:</strong> System prompts cannot be tampered with once stored</li>
-                      <li>• <strong>Transparency:</strong> Parents and educators can verify AI instructions</li>
-                      <li>• <strong>Decentralization:</strong> No single point of control or failure</li>
-                      <li>• <strong>Audit Trail:</strong> Complete history of prompt changes over time</li>
-                    </ul>
-                  </div>
-
-                  <div>
-                    <h4 className="font-semibold mb-2">🎯 Educational Safety Features</h4>
-                    <ul className="space-y-2 text-sm text-muted-foreground">
-                      <li>• <strong>Content Validation:</strong> Automated screening for age-appropriate content</li>
-                      <li>• <strong>Educational Focus:</strong> Ensures prompts maintain learning objectives</li>
-                      <li>• <strong>Safety Ratings:</strong> Three-tier approval system (pending → reviewed → safe)</li>
-                      <li>• <strong>Version Control:</strong> Track changes and rollback if needed</li>
-                    </ul>
-                  </div>
-
-                  <div>
-                    <h4 className="font-semibold mb-2">⚡ How It Works</h4>
-                    <ol className="space-y-2 text-sm text-muted-foreground">
-                      <li>1. <strong>Create Prompt:</strong> Design AI tutor behavior and educational goals</li>
-                      <li>2. <strong>Validate Content:</strong> Automated safety and educational content checks</li>
-                      <li>3. <strong>Store on 0G:</strong> Upload to decentralized storage with cryptographic hash</li>
-                      <li>4. <strong>Deploy Agent:</strong> AI tutor uses verified prompt from 0G Storage</li>
-                      <li>5. <strong>Continuous Verification:</strong> Regular integrity checks ensure no tampering</li>
-                    </ol>
-                  </div>
-
-                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                    <h4 className="font-semibold text-blue-900 mb-2">🚀 Getting Started</h4>
-                    <p className="text-sm text-blue-800">
-                      To begin using 0G Storage for your AI tutors, you&apos;ll need an Ethereum wallet and some testnet tokens. 
-                      The system guides you through creating educational prompts, validating content safety, and storing 
-                      them immutably on the 0G network.
+                    <h3 className="font-semibold mb-2">🔒 Immutable Verification</h3>
+                    <p className="text-sm text-muted-foreground">
+                      All AI tutor system prompts are stored on 0G Storage, creating an immutable record 
+                      that cannot be modified after deployment. This ensures transparency and trust in 
+                      educational AI systems.
                     </p>
+                  </div>
+
+                  <div>
+                    <h3 className="font-semibold mb-2">🛡️ Educational Safety</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Each prompt undergoes automated content validation to ensure age-appropriate, 
+                      educational content. The validation results are stored alongside the prompt 
+                      for complete transparency.
+                    </p>
+                  </div>
+
+                  <div>
+                    <h3 className="font-semibold mb-2">⚡ Current Status</h3>
+                    <div className="space-y-2">
+                      {storageStatus ? (
+                        <div className="text-sm">
+                          <p><strong>Service Status:</strong> {storageStatus.serviceAvailable ? '✅ Available' : '❌ Unavailable'}</p>
+                          <p><strong>Network:</strong> {storageStatus.network.rpcUrl}</p>
+                          <p><strong>Total Stored Prompts:</strong> {storageStatus.statistics.totalStoredPrompts}</p>
+                          <p><strong>Your Stored Prompts:</strong> {storageStatus.statistics.userStoredPrompts}</p>
+                          <p><strong>Features:</strong> Store ✓, Retrieve ✓, Verify ✓, Validate ✓</p>
+                        </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">Loading 0G Storage status...</p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="font-semibold mb-2">🔧 How It Works</h3>
+                    <div className="space-y-2 text-sm text-muted-foreground">
+                      <p>1. <strong>Create:</strong> Design AI tutor prompts with educational focus</p>
+                      <p>2. <strong>Validate:</strong> Automated safety and educational content checks</p>
+                      <p>3. <strong>Store:</strong> Upload to 0G Storage with cryptographic verification</p>
+                      <p>4. <strong>Verify:</strong> Anyone can verify prompt integrity using hash comparison</p>
+                      <p>5. <strong>Deploy:</strong> Verified prompts power trusted AI tutors</p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="font-semibold mb-2">📊 Benefits</h3>
+                    <ul className="text-sm text-muted-foreground list-disc pl-5 space-y-1">
+                      <li>Complete transparency in AI system behavior</li>
+                      <li>Immutable audit trail for educational content</li>
+                      <li>Cryptographic verification of prompt integrity</li>
+                      <li>Decentralized storage resistant to censorship</li>
+                      <li>Community-verifiable AI safety standards</li>
+                    </ul>
                   </div>
                 </div>
               </CardContent>

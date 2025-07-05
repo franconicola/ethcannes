@@ -10,19 +10,20 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import {
-    AIAgentPrompt,
-    StoredPrompt,
-    initializeZGStorage,
+    AgentPrompt,
+    StorageResult,
+    ValidationResult,
+    generateTestPrompt,
+    getStorageStatus,
     retrieveAgentPrompt,
     storeAgentPrompt,
     validateEducationalContent,
     verifyPromptIntegrity
-} from '@/lib/storage'
+} from '@/lib/api/zgStorage'
 import {
     AlertTriangle,
     CheckCircle,
     Download,
-    ExternalLink,
     History,
     Shield,
     Upload
@@ -31,11 +32,11 @@ import { useEffect, useState } from 'react'
 
 interface PromptManagerProps {
   agentId?: string
-  onPromptStored?: (storedPrompt: StoredPrompt) => void
+  onPromptStored?: (storedPrompt: StorageResult) => void
 }
 
 export function PromptManager({ agentId, onPromptStored }: PromptManagerProps) {
-  const [prompt, setPrompt] = useState<Partial<AIAgentPrompt>>({
+  const [prompt, setPrompt] = useState<Partial<AgentPrompt>>({
     agentId: agentId || '',
     agentName: '',
     systemPrompt: '',
@@ -50,21 +51,37 @@ export function PromptManager({ agentId, onPromptStored }: PromptManagerProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
-  const [storedPrompts, setStoredPrompts] = useState<StoredPrompt[]>([])
-  const [validation, setValidation] = useState<{ isValid: boolean; issues: string[] } | null>(null)
-  const [zgInitialized, setZgInitialized] = useState(false)
+  const [storedPrompts, setStoredPrompts] = useState<StorageResult[]>([])
+  const [validation, setValidation] = useState<ValidationResult | null>(null)
+  const [storageAvailable, setStorageAvailable] = useState(false)
 
-  // Initialize 0G Storage on component mount
+  // Check 0G Storage availability on component mount
   useEffect(() => {
-    const initialized = initializeZGStorage()
-    setZgInitialized(initialized)
+    const checkStorage = async () => {
+      try {
+        const status = await getStorageStatus()
+        setStorageAvailable(status.serviceAvailable)
+      } catch (err) {
+        console.error('Failed to check storage status:', err)
+        setStorageAvailable(false)
+      }
+    }
+    checkStorage()
   }, [])
 
   // Validate prompt content in real-time
   useEffect(() => {
     if (prompt.systemPrompt && prompt.systemPrompt.length > 10) {
-      const result = validateEducationalContent(prompt as AIAgentPrompt)
-      setValidation(result)
+      const validateAsync = async () => {
+        try {
+          const result = await validateEducationalContent(prompt as AgentPrompt)
+          setValidation(result)
+        } catch (err) {
+          console.error('Validation error:', err)
+          setValidation(null)
+        }
+      }
+      validateAsync()
     } else {
       setValidation(null)
     }
@@ -86,11 +103,11 @@ export function PromptManager({ agentId, onPromptStored }: PromptManagerProps) {
       setError(null)
       setSuccess(null)
 
-      const fullPrompt: AIAgentPrompt = {
+      const fullPrompt: AgentPrompt = {
         ...prompt,
         createdAt: new Date().toISOString(),
         subjects: prompt.subjects || []
-      } as AIAgentPrompt
+      } as AgentPrompt
 
       const storedPrompt = await storeAgentPrompt(fullPrompt, privateKey)
       
@@ -124,12 +141,12 @@ export function PromptManager({ agentId, onPromptStored }: PromptManagerProps) {
     }
   }
 
-  const handleVerifyPrompt = async (storedPrompt: StoredPrompt) => {
+  const handleVerifyPrompt = async (storedPrompt: StorageResult) => {
     try {
       setLoading(true)
       setError(null)
       
-      const isValid = await verifyPromptIntegrity(prompt as AIAgentPrompt, storedPrompt.rootHash)
+      const isValid = await verifyPromptIntegrity(prompt as AgentPrompt, storedPrompt.rootHash)
       
       if (isValid) {
         setSuccess('Prompt integrity verified ✓')
@@ -144,14 +161,30 @@ export function PromptManager({ agentId, onPromptStored }: PromptManagerProps) {
     }
   }
 
+  const handleGenerateTestPrompt = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      
+      const testPrompt = await generateTestPrompt(prompt.agentId || 'test-agent')
+      setPrompt(testPrompt)
+      setSuccess('Test prompt generated successfully')
+      
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to generate test prompt')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Status Alerts */}
-      {!zgInitialized && (
+      {!storageAvailable && (
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
-            0G Storage not initialized. Check your configuration.
+            0G Storage not available. Check your API configuration.
           </AlertDescription>
         </Alert>
       )}
@@ -200,17 +233,17 @@ export function PromptManager({ agentId, onPromptStored }: PromptManagerProps) {
                   <Label htmlFor="agentId">Agent ID</Label>
                   <Input
                     id="agentId"
-                    value={prompt.agentId}
-                    onChange={(e) => setPrompt(prev => ({ ...prev, agentId: e.target.value }))}
-                    placeholder="agent-math-tutor"
+                    value={prompt.agentId || ''}
+                    onChange={(e) => setPrompt({ ...prompt, agentId: e.target.value })}
+                    placeholder="math-tutor-v1"
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="agentName">Agent Name</Label>
                   <Input
                     id="agentName"
-                    value={prompt.agentName}
-                    onChange={(e) => setPrompt(prev => ({ ...prev, agentName: e.target.value }))}
+                    value={prompt.agentName || ''}
+                    onChange={(e) => setPrompt({ ...prompt, agentName: e.target.value })}
                     placeholder="Math Tutor"
                   />
                 </div>
@@ -220,37 +253,36 @@ export function PromptManager({ agentId, onPromptStored }: PromptManagerProps) {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="educationalLevel">Educational Level</Label>
-                  {/* @ts-ignore */}
-                  <Select value={prompt.educationalLevel} onValueChange={(value) => setPrompt(prev => ({ ...prev, educationalLevel: value as any }))}>
-                    {/* @ts-ignore */}
+                  <Select 
+                    value={prompt.educationalLevel || ''} 
+                    onValueChange={(value) => setPrompt({ ...prompt, educationalLevel: value })}
+                  >
                     <SelectTrigger>
-                      {/* @ts-ignore */}
                       <SelectValue placeholder="Select level" />
                     </SelectTrigger>
-                    {/* @ts-ignore */}
                     <SelectContent>
-                      {/* @ts-ignore */}
                       <SelectItem value="elementary">Elementary</SelectItem>
-                      {/* @ts-ignore */}
                       <SelectItem value="middle">Middle School</SelectItem>
-                      {/* @ts-ignore */}
                       <SelectItem value="high">High School</SelectItem>
-                      {/* @ts-ignore */}
-                      <SelectItem value="adult">Adult</SelectItem>
+                      <SelectItem value="college">College</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="subjects">Subjects (comma-separated)</Label>
-                  <Input
-                    id="subjects"
-                    value={prompt.subjects?.join(', ') || ''}
-                    onChange={(e) => setPrompt(prev => ({ 
-                      ...prev, 
-                      subjects: e.target.value.split(',').map(s => s.trim()).filter(Boolean)
-                    }))}
-                    placeholder="mathematics, algebra, geometry"
-                  />
+                  <Label htmlFor="safetyRating">Safety Rating</Label>
+                  <Select 
+                    value={prompt.safetyRating || ''} 
+                    onValueChange={(value) => setPrompt({ ...prompt, safetyRating: value as 'safe' | 'reviewed' | 'pending' })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select rating" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="safe">Safe</SelectItem>
+                      <SelectItem value="reviewed">Reviewed</SelectItem>
+                      <SelectItem value="pending">Pending</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
@@ -259,39 +291,23 @@ export function PromptManager({ agentId, onPromptStored }: PromptManagerProps) {
                 <Label htmlFor="systemPrompt">System Prompt</Label>
                 <Textarea
                   id="systemPrompt"
-                  value={prompt.systemPrompt}
-                  onChange={(e) => setPrompt(prev => ({ ...prev, systemPrompt: e.target.value }))}
-                  placeholder="You are a friendly AI tutor specialized in elementary mathematics..."
+                  value={prompt.systemPrompt || ''}
+                  onChange={(e) => setPrompt({ ...prompt, systemPrompt: e.target.value })}
+                  placeholder="You are a helpful AI tutor..."
                   rows={8}
-                  className="font-mono text-sm"
                 />
               </div>
 
-              {/* Validation Results */}
-              {validation && (
-                <div className="space-y-2">
-                  <Label>Content Validation</Label>
-                  <div className={`p-3 rounded-lg border ${validation.isValid ? 'bg-green-50 border-green-200' : 'bg-yellow-50 border-yellow-200'}`}>
-                    <div className="flex items-center gap-2 mb-2">
-                      {validation.isValid ? (
-                        <CheckCircle className="h-4 w-4 text-green-600" />
-                      ) : (
-                        <AlertTriangle className="h-4 w-4 text-yellow-600" />
-                      )}
-                      <span className="font-medium text-sm">
-                        {validation.isValid ? 'Content Approved' : 'Issues Found'}
-                      </span>
-                    </div>
-                    {validation.issues.length > 0 && (
-                      <ul className="text-sm space-y-1">
-                        {validation.issues.map((issue, index) => (
-                          <li key={index} className="text-yellow-700">• {issue}</li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                </div>
-              )}
+              {/* Subjects */}
+              <div className="space-y-2">
+                <Label htmlFor="subjects">Subjects (comma-separated)</Label>
+                <Input
+                  id="subjects"
+                  value={prompt.subjects?.join(', ') || ''}
+                  onChange={(e) => setPrompt({ ...prompt, subjects: e.target.value.split(', ').filter(s => s.trim()) })}
+                  placeholder="math, algebra, geometry"
+                />
+              </div>
 
               {/* Private Key */}
               <div className="space-y-2">
@@ -301,21 +317,45 @@ export function PromptManager({ agentId, onPromptStored }: PromptManagerProps) {
                   type="password"
                   value={privateKey}
                   onChange={(e) => setPrivateKey(e.target.value)}
-                  placeholder="Your Ethereum private key"
+                  placeholder="Your private key for signing transactions"
                 />
-                <p className="text-xs text-muted-foreground">
-                  Required for uploading to 0G Storage. Never share your private key.
-                </p>
               </div>
 
-              <Button 
-                onClick={handleStorePrompt} 
-                disabled={loading || !zgInitialized || !validation?.isValid}
-                className="w-full"
-              >
-                <Upload className="h-4 w-4 mr-2" />
-                {loading ? 'Storing on 0G Storage...' : 'Store Prompt on 0G Storage'}
-              </Button>
+              {/* Validation Results */}
+              {validation && (
+                <Alert variant={validation.isValid ? "default" : "destructive"}>
+                  {validation.isValid ? <CheckCircle className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
+                  <AlertDescription>
+                    {validation.isValid ? 'Content validation passed' : 'Content validation failed'}
+                    {validation.issues.length > 0 && (
+                      <ul className="mt-2 list-disc pl-5 space-y-1">
+                        {validation.issues.map((issue, index) => (
+                          <li key={index} className="text-sm">{issue}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex gap-2">
+                <Button 
+                  onClick={handleStorePrompt} 
+                  disabled={loading || !validation?.isValid}
+                  className="flex-1"
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  Store on 0G Storage
+                </Button>
+                <Button 
+                  onClick={handleGenerateTestPrompt}
+                  variant="outline"
+                  disabled={loading}
+                >
+                  Generate Test
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -324,24 +364,29 @@ export function PromptManager({ agentId, onPromptStored }: PromptManagerProps) {
         <TabsContent value="manage" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Download className="h-5 w-5" />
-                Retrieve & Verify Prompts
-              </CardTitle>
+              <CardTitle>Retrieve & Verify Prompts</CardTitle>
               <CardDescription>
-                Retrieve stored prompts from 0G Storage and verify their integrity
+                Fetch and verify AI tutor prompts from 0G Storage
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="retrieveHash">0G Storage Hash</Label>
+                <Label htmlFor="rootHash">Root Hash</Label>
                 <div className="flex gap-2">
                   <Input
-                    id="retrieveHash"
-                    placeholder="0x1234...abcd"
-                    className="font-mono"
+                    id="rootHash"
+                    placeholder="Enter 0G Storage root hash"
+                    className="flex-1"
                   />
-                  <Button onClick={() => handleRetrievePrompt('mock-hash')}>
+                  <Button 
+                    onClick={() => {
+                      const input = document.getElementById('rootHash') as HTMLInputElement
+                      if (input?.value) {
+                        handleRetrievePrompt(input.value)
+                      }
+                    }}
+                    disabled={loading}
+                  >
                     <Download className="h-4 w-4 mr-2" />
                     Retrieve
                   </Button>
@@ -357,49 +402,47 @@ export function PromptManager({ agentId, onPromptStored }: PromptManagerProps) {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <History className="h-5 w-5" />
-                Prompt History
+                Stored Prompts
               </CardTitle>
               <CardDescription>
-                View all stored prompt versions for this agent
+                History of prompts stored on 0G Storage
               </CardDescription>
             </CardHeader>
             <CardContent>
               {storedPrompts.length === 0 ? (
-                <p className="text-muted-foreground text-center py-8">
-                  No prompts stored yet. Create and store your first prompt above.
-                </p>
+                <div className="text-center py-8 text-gray-500">
+                  No stored prompts yet. Create and store your first prompt above.
+                </div>
               ) : (
-                <div className="space-y-3">
-                  {storedPrompts.map((storedPrompt) => (
-                    <div key={storedPrompt.rootHash} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline">v{storedPrompt.version}</Badge>
-                          <span className="font-mono text-sm">
-                            {storedPrompt.rootHash.slice(0, 12)}...{storedPrompt.rootHash.slice(-8)}
-                          </span>
+                <div className="space-y-4">
+                  {storedPrompts.map((storedPrompt, index) => (
+                    <div key={index} className="border rounded-lg p-4 space-y-2">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h3 className="font-medium">{storedPrompt.agentId}</h3>
+                          <p className="text-sm text-gray-600">Version {storedPrompt.version}</p>
                         </div>
-                        <p className="text-xs text-muted-foreground">
-                          Uploaded: {new Date(storedPrompt.uploadedAt).toLocaleString()}
-                        </p>
+                        <div className="flex gap-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleVerifyPrompt(storedPrompt)}
+                            disabled={loading}
+                          >
+                            <Shield className="h-4 w-4 mr-1" />
+                            Verify
+                          </Button>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleVerifyPrompt(storedPrompt)}
-                        >
-                          <Shield className="h-3 w-3 mr-1" />
-                          Verify
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => window.open(`https://0g-explorer.com/hash/${storedPrompt.rootHash}`, '_blank')}
-                        >
-                          <ExternalLink className="h-3 w-3 mr-1" />
-                          View
-                        </Button>
+                      <div className="text-sm space-y-1">
+                        <p><strong>Root Hash:</strong> {storedPrompt.rootHash}</p>
+                        <p><strong>TX Hash:</strong> {storedPrompt.txHash}</p>
+                        <p><strong>Uploaded:</strong> {new Date(storedPrompt.uploadedAt).toLocaleString()}</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Badge variant={storedPrompt.verified ? "default" : "secondary"}>
+                          {storedPrompt.verified ? "Verified" : "Unverified"}
+                        </Badge>
                       </div>
                     </div>
                   ))}

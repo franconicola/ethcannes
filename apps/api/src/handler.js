@@ -1,9 +1,10 @@
 // Main request handler - Edge-compatible version with Prisma
 import { PrismaClient } from '@prisma/client/edge';
 import { withAccelerate } from '@prisma/extension-accelerate';
+import { chatWithAgent, createAgentSession, getConversationHistory, stopAgentSession } from './routes/aiAgentRoutes.js';
 import { getAuthMe } from './routes/authRoutes.js';
 import { getAgentStatus, getPublicAgents } from './routes/avatarRoutes.js';
-import { createAgentSession, chatWithAgent, stopAgentSession, getConversationHistory } from './routes/aiAgentRoutes.js';
+import { getPrompt, getStorageStatus, getTestPrompt, storePrompt, validatePrompt, verifyPrompt } from './routes/zgStorageRoutes.js';
 import { validatePrivyToken } from './services/authService.js';
 import { getOrCreateAnonymousSession } from './services/sessionService.js';
 import { corsHeaders, handleCORS } from './utils/cors.js';
@@ -126,6 +127,34 @@ export async function handleRequest(request, env) {
       return await getAuthMe(request, env, authInfo, anonymousSession, prisma);
     }
 
+    // 0G Storage routes
+    if (cleanPath === '/0g-storage/status' && method === 'GET') {
+      return await getStorageStatus(request, env, authInfo, anonymousSession, prisma);
+    }
+
+    if (cleanPath === '/0g-storage/prompts' && method === 'POST') {
+      return await storePrompt(request, env, authInfo, anonymousSession, prisma);
+    }
+
+    if (cleanPath === '/0g-storage/prompts/verify' && method === 'POST') {
+      return await verifyPrompt(request, env, authInfo, anonymousSession, prisma);
+    }
+
+    if (cleanPath === '/0g-storage/prompts/validate' && method === 'POST') {
+      return await validatePrompt(request, env, authInfo, anonymousSession, prisma);
+    }
+
+    // 0G Storage dynamic routes
+    const getPromptMatch = cleanPath.match(/^\/0g-storage\/prompts\/([^\/]+)$/);
+    if (getPromptMatch && method === 'GET') {
+      return await getPrompt(request, env, authInfo, anonymousSession, prisma);
+    }
+
+    const getTestPromptMatch = cleanPath.match(/^\/0g-storage\/prompts\/test\/([^\/]+)$/);
+    if (getTestPromptMatch && method === 'GET') {
+      return await getTestPrompt(request, env, authInfo, anonymousSession, prisma);
+    }
+
     // AI Agent routes
     if (cleanPath === '/agents/sessions' && method === 'POST') {
       return await createAgentSession(request, env, authInfo, anonymousSession, prisma);
@@ -162,6 +191,12 @@ export async function handleRequest(request, env) {
         "POST /agents/sessions/:sessionId/chat",
         "POST /agents/sessions/:sessionId/stop",
         "GET /agents/sessions/:sessionId/conversation",
+        "GET /0g-storage/status",
+        "POST /0g-storage/prompts",
+        "GET /0g-storage/prompts/:rootHash",
+        "POST /0g-storage/prompts/verify",
+        "POST /0g-storage/prompts/validate",
+        "GET /0g-storage/prompts/test/:agentId",
       ],
       paginationParams: {
         page: "Page number (default: 1)",
