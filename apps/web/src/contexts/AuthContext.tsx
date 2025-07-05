@@ -369,18 +369,41 @@ export default function AuthProviderWrapper({ children }: { children: ReactNode 
     return (
       <MockAuthProvider>
         <div className="min-h-screen bg-background flex items-center justify-center">
-          <div className="text-center space-y-4 p-8 border rounded-lg max-w-md">
-            <h2 className="text-xl font-bold text-destructive">Configuration Error</h2>
-            <p className="text-muted-foreground">
-              Missing <code className="bg-muted px-2 py-1 rounded">NEXT_PUBLIC_PRIVY_APP_ID</code> environment variable.
-            </p>
-            <p className="text-sm text-muted-foreground">
-              Please create <code className="bg-muted px-1 rounded">apps/web/.env.local</code> with your Privy App ID.
-            </p>
-            <div className="text-xs text-left bg-muted p-3 rounded">
-              <pre>{`# apps/web/.env.local
+          <div className="text-center space-y-6 p-8 border rounded-lg max-w-2xl">
+            <div className="space-y-2">
+              <h2 className="text-2xl font-bold text-primary">⚠️ Privy Configuration Required</h2>
+              <p className="text-muted-foreground">
+                To enable wallet connectivity, you need to configure your Privy App ID.
+              </p>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="text-left">
+                <h3 className="text-lg font-semibold mb-2">Quick Setup:</h3>
+                <ol className="list-decimal list-inside space-y-2 text-sm">
+                  <li>Go to <a href="https://console.privy.io/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">https://console.privy.io/</a></li>
+                  <li>Create a new app or select an existing one</li>
+                  <li>Copy your App ID from the dashboard</li>
+                  <li>Create <code className="bg-muted px-2 py-1 rounded">apps/web/.env.local</code> with:</li>
+                </ol>
+              </div>
+              
+              <div className="text-xs text-left bg-muted p-4 rounded-lg">
+                <pre className="whitespace-pre-wrap">{`# apps/web/.env.local
 NEXT_PUBLIC_PRIVY_APP_ID="your-app-id-here"
 NEXT_PUBLIC_API_URL="http://localhost:8787/api"`}</pre>
+              </div>
+              
+              <div className="text-sm text-muted-foreground">
+                <p>After creating the file, restart your development server:</p>
+                <code className="bg-muted px-2 py-1 rounded mt-1 block">npm run dev</code>
+              </div>
+            </div>
+            
+            <div className="pt-4 border-t">
+              <p className="text-sm text-muted-foreground">
+                <strong>Note:</strong> You can still browse avatars without wallet connectivity.
+              </p>
             </div>
           </div>
         </div>
@@ -397,6 +420,23 @@ NEXT_PUBLIC_API_URL="http://localhost:8787/api"`}</pre>
           theme: 'light',
           accentColor: '#0094FF',
         },
+        // Add wallet connectors
+        supportedChains: [
+          {
+            id: 1,
+            name: 'Ethereum',
+            network: 'mainnet',
+            nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+            rpcUrls: { default: { http: ['https://eth-mainnet.g.alchemy.com/v2/demo'] } },
+          },
+          {
+            id: 137,
+            name: 'Polygon',
+            network: 'polygon',
+            nativeCurrency: { name: 'MATIC', symbol: 'MATIC', decimals: 18 },
+            rpcUrls: { default: { http: ['https://polygon-rpc.com'] } },
+          },
+        ],
       }}
     >
       <AuthProvider>

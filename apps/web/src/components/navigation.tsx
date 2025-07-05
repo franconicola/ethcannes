@@ -15,7 +15,7 @@ import {
 import { SidebarTrigger } from '@/components/ui/sidebar'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePrivy } from '@privy-io/react-auth'
-import { ChevronDown, LogOut, Settings, User } from 'lucide-react'
+import { ChevronDown, CreditCard, LogOut, Settings, User } from 'lucide-react'
 import Link from 'next/link'
 
 export function Navigation() {
@@ -106,6 +106,9 @@ export function Navigation() {
     return null
   }
 
+  // Check if user has a connected wallet
+  const hasConnectedWallet = getWalletAddress(user, privyUser) !== null
+
   return (
     <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
       <div className="mx-auto px-2 sm:px-4 lg:px-6 xl:px-8">
@@ -114,7 +117,7 @@ export function Navigation() {
             <SidebarTrigger className="-ml-1" />
             <div className="hidden sm:block">
               <Link href="/" className="flex items-center gap-2 text-xl lg:text-2xl font-bold text-foreground">
-                <span className="text-foreground">Home</span>
+                <span className="text-foreground">SparkMind</span>
               </Link>
             </div>
           </div>
@@ -122,8 +125,9 @@ export function Navigation() {
           <div className="flex items-center space-x-2 lg:space-x-4">
             <ThemeToggle />
             {!isAuthenticated ? (
-              <Button onClick={login} size="sm" className="text-xs lg:text-sm">
-                Sign In
+              <Button onClick={login} size="sm" className="text-xs lg:text-sm gap-2">
+                <CreditCard className="h-4 w-4" />
+                Connect Wallet
               </Button>
             ) : (
               <DropdownMenu>
@@ -141,11 +145,25 @@ export function Navigation() {
                     </Avatar>
                     <div className="hidden md:flex flex-col items-start">
                       <span className="text-sm font-medium">
-                        {getWalletAddress(user, privyUser)?.slice(0, 6)}...{getWalletAddress(user, privyUser)?.slice(-4)}
+                        {hasConnectedWallet ? (
+                          <>
+                            {getWalletAddress(user, privyUser)?.slice(0, 6)}...{getWalletAddress(user, privyUser)?.slice(-4)}
+                          </>
+                        ) : (
+                          getDisplayName(user, privyUser)
+                        )}
                       </span>
-                      <Badge variant="secondary" className="text-xs">
-                        {user?.subscriptionTier || 'FREE'}
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary" className="text-xs">
+                          {user?.subscriptionTier || 'FREE'}
+                        </Badge>
+                        {hasConnectedWallet && (
+                          <div className="flex items-center gap-1">
+                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                            <span className="text-xs text-green-600">Connected</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                     <ChevronDown className="h-4 w-4 hidden sm:block" />
                   </Button>
@@ -154,12 +172,24 @@ export function Navigation() {
                 <DropdownMenuContent align="end" className="w-56">
                   {/* @ts-ignore */}
                   <DropdownMenuLabel>My Account</DropdownMenuLabel>
-                  {getWalletAddress(user, privyUser) && (
+                  {hasConnectedWallet ? (
                     <>
                       {/* @ts-ignore */}
                       <DropdownMenuLabel className="font-normal">
-                        <span className="text-xs text-muted-foreground font-mono">
-                          {getWalletAddress(user, privyUser)?.slice(0, 6)}...{getWalletAddress(user, privyUser)?.slice(-4)}
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                          <span className="text-xs text-muted-foreground font-mono">
+                            {getWalletAddress(user, privyUser)?.slice(0, 6)}...{getWalletAddress(user, privyUser)?.slice(-4)}
+                          </span>
+                        </div>
+                      </DropdownMenuLabel>
+                    </>
+                  ) : (
+                    <>
+                      {/* @ts-ignore */}
+                      <DropdownMenuLabel className="font-normal">
+                        <span className="text-xs text-muted-foreground">
+                          {getDisplayName(user, privyUser)}
                         </span>
                       </DropdownMenuLabel>
                     </>

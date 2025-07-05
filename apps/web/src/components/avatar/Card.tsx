@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardTitle } from '@/components/ui/card'
 import { Loader } from '@/components/ui/loader'
 import Image from 'next/image'
+import { useState } from 'react'
 import { VideoPreview } from '../video/Preview'
 import type { AvatarCardProps } from './types'
 
@@ -16,8 +17,20 @@ export function AvatarCard({
   selectedAvatarId,
   onStartChat 
 }: AvatarCardProps) {
+  const [imageLoading, setImageLoading] = useState(true)
+  const [imageError, setImageError] = useState(false)
   const isDisabled = loading || hasReachedFreeLimit
   const isCurrentlyLoading = sessionLoading && selectedAvatarId === avatar.id
+
+  const handleImageLoad = () => {
+    setImageLoading(false)
+    setImageError(false)
+  }
+
+  const handleImageError = () => {
+    setImageLoading(false)
+    setImageError(true)
+  }
 
   return (
     <Card 
@@ -39,14 +52,24 @@ export function AvatarCard({
       )}
 
       <div className="relative w-full h-72 sm:h-80 lg:h-[28rem] bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center overflow-hidden">
+        {/* Image loading state */}
+        {imageLoading && avatar.image && (
+          <div className="absolute inset-0 flex items-center justify-center bg-muted/50">
+            <Loader variant="dots" size="sm" />
+          </div>
+        )}
+        
         {/* Static image - shown by default */}
-        {avatar.image && (
+        {avatar.image && !imageError && (
           <Image 
             src={avatar.image} 
             alt={avatar.name}
             fill
             className="object-cover transition-all duration-300 group-hover:opacity-0"
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+            onLoad={handleImageLoad}
+            onError={handleImageError}
+            priority={false}
           />
         )}
         
@@ -58,8 +81,8 @@ export function AvatarCard({
           />
         )}
         
-        {/* Fallback content */}
-        {!avatar.image && !avatar.preview_video && (
+        {/* Fallback content - shown when no image/video or image failed to load */}
+        {(!avatar.image || imageError) && !avatar.preview_video && (
           <div className="flex items-center justify-center text-primary-foreground">
             {/* @ts-ignore */}
             <Avatar className="w-16 h-16 lg:w-20 lg:h-20">
@@ -68,6 +91,13 @@ export function AvatarCard({
                 {avatar.name.charAt(0)}
               </AvatarFallback>
             </Avatar>
+          </div>
+        )}
+
+        {/* Image error indicator */}
+        {imageError && (
+          <div className="absolute top-2 right-2 text-xs text-white bg-red-500/80 px-2 py-1 rounded">
+            Image failed to load
           </div>
         )}
       </div>
@@ -79,9 +109,9 @@ export function AvatarCard({
             <div className="w-3 h-3 bg-primary rounded-full animate-pulse" />
           )}
         </CardTitle>
-        {/* <CardDescription className="text-xs line-clamp-2 mb-3">
-          {avatar.description}
-        </CardDescription> */}
+        <p className="text-xs text-muted-foreground line-clamp-2 mb-3">
+          {avatar.description || 'AI-powered avatar ready to chat'}
+        </p>
         {loading && (
           <Badge variant="secondary" className="text-xs">
             Starting...

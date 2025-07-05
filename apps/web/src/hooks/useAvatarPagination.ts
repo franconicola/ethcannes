@@ -81,24 +81,27 @@ export function useAvatarPagination(options: UseAvatarPaginationOptions = {}): U
 
       const url = buildApiUrl()
       
-      // API fallback logic (similar to your existing code)
-      const primaryApiUrl = process.env.NODE_ENV === 'production' 
-        ? 'https://sparkmind-api.workers.dev'
-        : 'http://localhost:8787'
+      // Enhanced API fallback logic with better error handling
+      const primaryApiUrl = process.env.NEXT_PUBLIC_API_URL || 
+        (process.env.NODE_ENV === 'production' 
+          ? 'https://sparkmind-api.workers.dev/api'
+          : 'http://localhost:8787/api')
       
       const fallbackUrls = process.env.NODE_ENV === 'development' ? [
-        "http://localhost:8787",
-        "http://localhost:3000"
-      ] : []
+        "http://localhost:8787/api",
+        "http://localhost:3000/api"
+      ] : ["https://sparkmind-api.workers.dev/api"]
       
       const apiUrls = [primaryApiUrl, ...fallbackUrls]
       
       let response: Response | undefined
       let lastError: Error | undefined
+      let attemptedUrls: string[] = []
       
       for (const baseUrl of apiUrls) {
         try {
-          const fullUrl = url.replace(apiUrl, baseUrl + '/api')
+          const fullUrl = url.replace(apiUrl, baseUrl)
+          attemptedUrls.push(fullUrl)
           console.log(`🔄 Trying API at: ${fullUrl}`)
           
           response = await fetch(fullUrl, {
@@ -112,6 +115,9 @@ export function useAvatarPagination(options: UseAvatarPaginationOptions = {}): U
           if (response.ok) {
             console.log(`✅ API responded from: ${baseUrl}`)
             break
+          } else {
+            console.log(`❌ API ${baseUrl} returned ${response.status}: ${response.statusText}`)
+            lastError = new Error(`HTTP ${response.status}: ${response.statusText}`)
           }
         } catch (err) {
           console.log(`❌ Failed to connect to: ${baseUrl}`, err)
@@ -120,26 +126,36 @@ export function useAvatarPagination(options: UseAvatarPaginationOptions = {}): U
       }
 
       if (!response || !response.ok) {
-        throw lastError || new Error('Unable to connect to avatar service')
+        const errorMessage = lastError?.message || 'Unable to connect to avatar service'
+        console.error('❌ All API attempts failed:', attemptedUrls)
+        throw new Error(`${errorMessage}. Tried: ${attemptedUrls.join(', ')}`)
       }
 
-      const data: any = await response.json() // Use any to handle both success and error responses
+      const data: any = await response.json()
       
       if (data.success && Array.isArray(data.avatars)) {
         setAvatars(data.avatars)
-        setPagination(data.pagination)
-        setFilterOptions(data.filterOptions)
+        setPagination(data.pagination || { page: 1, totalPages: 1, totalItems: data.avatars.length })
+        setFilterOptions(data.filterOptions || { genders: [], styles: [] })
         
-        console.log(`✅ Loaded ${data.avatars.length} avatars (page ${data.pagination.page}/${data.pagination.totalPages})`)
+        console.log(`✅ Loaded ${data.avatars.length} avatars (page ${data.pagination?.page || 1}/${data.pagination?.totalPages || 1})`)
+        
+        // If no avatars loaded, show a helpful message
+        if (data.avatars.length === 0) {
+          console.log('ℹ️ No avatars found with current filters')
+        }
       } else {
-        throw new Error(data.error || data.message || 'Failed to load avatars')
+        console.error('❌ Invalid response format:', data)
+        throw new Error(data.error || data.message || 'Invalid response format from avatar service')
       }
       
     } catch (err) {
       console.error('❌ Failed to load avatars:', err)
-      setError(err instanceof Error ? err.message : 'Failed to load avatars')
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load avatars'
+      setError(errorMessage)
       setAvatars([])
       setPagination(null)
+      setFilterOptions({ genders: [], styles: [] })
     } finally {
       setLoading(false)
     }

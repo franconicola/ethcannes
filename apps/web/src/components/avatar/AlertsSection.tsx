@@ -1,14 +1,14 @@
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
 } from '@/components/ui/dialog'
-import { AlertTriangle, Target, X } from 'lucide-react'
+import { AlertTriangle, ExternalLink, RefreshCw, Target, X } from 'lucide-react'
 
 interface AlertsSectionProps {
   error: string | null
@@ -29,6 +29,11 @@ export function AlertsSection({
   onLogin,
   onDismissFreeLimit
 }: AlertsSectionProps) {
+  const handleRetryAvatars = () => {
+    onClearAvatarError()
+    window.location.reload()
+  }
+
   return (
     <>
       {error && (
@@ -49,12 +54,34 @@ export function AlertsSection({
         <Alert variant="destructive" className="mb-6 max-w-6xl mx-auto">
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Avatar Loading Error</AlertTitle>
-          <AlertDescription className="flex items-center justify-between">
-            <span>{avatarError}</span>
-            <Button variant="outline" size="sm" onClick={onClearAvatarError} className="ml-4">
-              <X className="h-4 w-4" />
-              Dismiss
-            </Button>
+          <AlertDescription className="space-y-3">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <p className="font-medium">Failed to load avatars:</p>
+                <p className="text-sm text-muted-foreground mt-1">{avatarError}</p>
+              </div>
+              <Button variant="outline" size="sm" onClick={onClearAvatarError} className="ml-4">
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={handleRetryAvatars}>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Retry
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => window.open('http://localhost:8787', '_blank')}>
+                <ExternalLink className="h-4 w-4 mr-2" />
+                Check API
+              </Button>
+            </div>
+            <div className="text-xs text-muted-foreground">
+              <p>Troubleshooting tips:</p>
+              <ul className="list-disc list-inside mt-1 space-y-0.5">
+                <li>Make sure your API server is running on port 8787</li>
+                <li>Check your network connection</li>
+                <li>Verify NEXT_PUBLIC_API_URL in your environment</li>
+              </ul>
+            </div>
           </AlertDescription>
         </Alert>
       )}
