@@ -176,6 +176,7 @@ export interface CreateSessionResponse {
     conversation: ConversationMessage[];
     isAuthenticated: boolean;
     freeMessagesRemaining: number;
+    anonymousSessionId?: string;
   };
 }
 

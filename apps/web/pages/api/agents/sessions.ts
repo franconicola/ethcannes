@@ -1,5 +1,6 @@
 // Agent sessions endpoint
 import { PrismaClient } from '@prisma/client';
+import crypto from 'crypto';
 import { NextApiRequest, NextApiResponse } from 'next';
 import {
   createSuccessResponse,
@@ -56,8 +57,12 @@ export default async function handler(
     // Skip Privy validation for now due to dependency issues
     // const authInfo: AuthInfo = await validatePrivyToken(authHeader, env);
 
-    // Parse anonymous session
-    const anonymousSessionId: string | undefined = getAnonymousSessionId(req);
+    // Parse anonymous session - generate one if not provided
+    let anonymousSessionId: string | undefined = getAnonymousSessionId(req);
+    if (!anonymousSessionId) {
+      // Generate a new session ID if none provided
+      anonymousSessionId = crypto.randomUUID();
+    }
     const anonymousSession = await getOrCreateAnonymousSession(anonymousSessionId, prisma);
 
     // Parse and validate request body
@@ -135,6 +140,7 @@ export default async function handler(
         isAuthenticated: false, // Temporarily disabled while fixing dependencies
         freeMessagesRemaining: anonymousSession?.freeMessagesUsed ? 
           Math.max(0, 10 - anonymousSession.freeMessagesUsed) : 10, // Default free limit
+        anonymousSessionId: anonymousSessionId, // Include session ID for frontend
       }
     };
 
