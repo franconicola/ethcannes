@@ -3,110 +3,20 @@ import { jsonWithCors } from '../utils/cors.js';
 
 // Helper function to parse pagination parameters
 function parsePaginationParams(url) {
-  const searchParams = new URL(url).searchParams;
-  
-  // Parse pagination parameters with defaults
-  const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
-  const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '12', 10))); // Default 12, max 100
-  const offset = (page - 1) * limit;
-  
-  // Parse optional filters
-  const search = searchParams.get('search')?.trim() || null;
-  const personality = searchParams.get('personality')?.trim() || null; // Changed from gender
-  const style = searchParams.get('style')?.trim() || null;
-  
-  return { page, limit, offset, search, personality, style };
+  const { searchParams } = new URL(url);
+  const page = parseInt(searchParams.get('page') || '1', 10);
+  const limit = parseInt(searchParams.get('limit') || '12', 10);
+  return { page, limit };
 }
 
-// Helper function to filter agents
-function filterAgents(agents, filters) {
-  const { search, personality, style } = filters;
-  
-  return agents.filter(agent => {
-    // Search filter - search in name and description
-    if (search) {
-      const searchLower = search.toLowerCase();
-      const nameMatch = agent.name.toLowerCase().includes(searchLower);
-      const descMatch = agent.description.toLowerCase().includes(searchLower);
-      if (!nameMatch && !descMatch) {
-        return false;
-      }
-    }
-    
-    // Personality filter (replaces gender filter)
-    if (personality && agent.personality !== personality) {
-      return false;
-    }
-    
-    // Style filter
-    if (style && agent.style !== style) {
-      return false;
-    }
-    
-    return true;
-  });
-}
-
-// Helper function to create pagination metadata
-function createPaginationMeta(totalCount, page, limit) {
-  const totalPages = Math.ceil(totalCount / limit);
-  const hasNextPage = page < totalPages;
-  const hasPrevPage = page > 1;
-  
-  return {
-    page,
-    limit,
-    totalCount,
-    totalPages,
-    hasNextPage,
-    hasPrevPage,
-    nextPage: hasNextPage ? page + 1 : null,
-    prevPage: hasPrevPage ? page - 1 : null,
-  };
-}
-
-// GET /agents/public - Get available AI agents with pagination (replaces /avatars/public)
+// GET /agents/public - Get available AI agents with pagination
 export async function getPublicAgents(request, env, authInfo, anonymousSession, prisma) {
   try {
-    // Parse pagination and filter parameters
-    const { page, limit, offset, search, personality, style } = parsePaginationParams(request.url);
-    
-    console.log('📄 AI Agents pagination request:', {
-      page,
-      limit,
-      offset,
-      search: search || 'none',
-      personality: personality || 'none',
-      style: style || 'none',
-      timestamp: new Date().toISOString()
-    });
+    const { page, limit } = parsePaginationParams(request.url);
 
-    // Fetch all AI agents
-    const allAgents = await getAvailableAgents();
+    // Fetch all available agents without filtering, providing a fallback for agents
+    const { agents = [], pagination } = await getAvailableAgents({ page, limit }, prisma);
     
-    // Apply filters
-    const filteredAgents = filterAgents(allAgents, { search, personality, style });
-    
-    // Apply pagination
-    const paginatedAgents = filteredAgents.slice(offset, offset + limit);
-    
-    // Create pagination metadata
-    const pagination = createPaginationMeta(filteredAgents.length, page, limit);
-    
-    // Get unique filter options for frontend
-    const filterOptions = {
-      personalities: [...new Set(allAgents.map(a => a.personality).filter(Boolean))].sort(),
-      styles: [...new Set(allAgents.map(a => a.style).filter(Boolean))].sort(),
-    };
-
-    console.log('✅ AI Agents paginated successfully:', {
-      totalAgents: allAgents.length,
-      filteredCount: filteredAgents.length,
-      returnedCount: paginatedAgents.length,
-      page,
-      totalPages: pagination.totalPages
-    });
-
     // --- New GIF Logic ---
     const availableGifs = ['mouse.gif']; // Add more GIF filenames here
     const getGifUrl = (filename) => {
@@ -114,7 +24,7 @@ export async function getPublicAgents(request, env, authInfo, anonymousSession, 
       return `${baseUrl}/gifs/${filename}`;
     };
 
-    const agentsWithGifs = paginatedAgents.map(agent => ({
+    const agentsWithGifs = agents.map(agent => ({
       ...agent,
       previewUrl: getGifUrl(availableGifs[Math.floor(Math.random() * availableGifs.length)]),
     }));
@@ -122,14 +32,8 @@ export async function getPublicAgents(request, env, authInfo, anonymousSession, 
 
     return jsonWithCors({
       success: true,
-      agents: agentsWithGifs, // Use agents with GIFs
+      agents: agentsWithGifs,
       pagination,
-      filters: {
-        search: search || null,
-        personality: personality || null,
-        style: style || null,
-      },
-      filterOptions,
       source: 'ai_agent_service'
     });
     
@@ -137,82 +41,35 @@ export async function getPublicAgents(request, env, authInfo, anonymousSession, 
     console.error('Failed to fetch AI agents:', error);
     return jsonWithCors({
       success: false,
-      error: 'Failed to fetch AI agents',
-      message: error.message
+      error: 'Failed to fetch agents. Please try again later.'
     }, 500);
   }
 }
 
-// GET /agents/status - Get AI agent service status (replaces /avatars/status)
+// GET /agent/:id/status - For checking agent readiness
 export async function getAgentStatus(request, env, authInfo, anonymousSession, prisma) {
   try {
-    // Count active agent sessions
-    let activeSessionsCount = 0;
-    let userStats = null;
+    const agentId = request.params.id;
 
-    if (authInfo.isAuthenticated && authInfo.user) {
-      // Get user's active sessions and stats
-      const [activeSessions, user] = await Promise.all([
-        prisma.agentSession.count({
-          where: {
-            userId: authInfo.user.id,
-            status: 'ACTIVE'
-          }
-        }),
-        prisma.user.findUnique({
-          where: { id: authInfo.user.id },
-          select: {
-            agentSessionsCount: true,
-            totalMessagesCount: true,
-            credits: true,
-            creditsUsed: true,
-            subscriptionTier: true,
-          }
-        })
-      ]);
-
-      activeSessionsCount = activeSessions;
-      userStats = user;
-    } else if (anonymousSession) {
-      // Get anonymous user's active sessions
-      activeSessionsCount = await prisma.agentSession.count({
-        where: {
-          anonymousSessionId: anonymousSession.id,
-          status: 'ACTIVE'
-        }
-      });
+    if (!agentId) {
+      return jsonWithCors({ success: false, error: 'Agent ID is required' }, 400);
     }
-
-    // Get total system stats (optional)
-    const systemStats = {
-      totalAvailableAgents: Object.keys((await import('../services/aiAgentService.js')).AI_AGENT_PERSONAS).length,
-      timestamp: new Date().toISOString(),
-    };
-
-    console.log('📊 AI Agent status retrieved:', {
-      isAuthenticated: authInfo.isAuthenticated,
-      activeSessionsCount,
-      hasUserStats: !!userStats,
-      systemStats,
-    });
-
+    
+    // For now, we assume agents are always ready.
+    // In the future, this could check a database or another service.
     return jsonWithCors({
       success: true,
-      status: {
-        isAuthenticated: authInfo.isAuthenticated,
-        activeSessionsCount,
-        userStats,
-        systemStats,
-        freeMessagesRemaining: anonymousSession ? Math.max(0, 5 - (anonymousSession.freeMessagesUsed || 0)) : null,
-      }
+      agentId,
+      isReady: true,
+      status: 'available',
+      message: 'Agent is ready for interaction.'
     });
 
   } catch (error) {
-    console.error('Failed to get AI agent status:', error);
+    console.error(`Error checking agent status for ID ${request.params.id}:`, error);
     return jsonWithCors({
       success: false,
-      error: 'Failed to get agent status',
-      message: error.message,
+      error: 'Failed to get agent status.'
     }, 500);
   }
 } 

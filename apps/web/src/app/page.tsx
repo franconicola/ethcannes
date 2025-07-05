@@ -1,11 +1,10 @@
 'use client'
 
-import { AlertsSection, AvatarFilters, AvatarGrid, HeroSection } from '@/components/avatar'
+import { AlertsSection, AvatarGrid, HeroSection } from '@/components/avatar'
 import { Loader } from '@/components/ui/loader'
 import { useAuth } from '@/contexts/AuthContext'
 import { useSession } from '@/contexts/SessionContext'
 import { useAvatarPagination } from '@/hooks/useAvatarPagination'
-import { useCallback } from 'react'
 
 export default function HomePage() {
   // Auth context
@@ -14,11 +13,8 @@ export default function HomePage() {
   // Session context
   const {
     loading: sessionLoading,
-    navigating,
     error,
-    freeLimitExceeded,
     clearError,
-    dismissFreeLimitModal,
     createSession,
   } = useSession()
 
@@ -26,12 +22,9 @@ export default function HomePage() {
   const {
     avatars,
     pagination,
-    filters,
-    filterOptions,
     loading: loadingAvatars,
     error: avatarError,
     setPage,
-    setFilters,
     clearError: clearAvatarError,
     reload: reloadAvatars,
   } = useAvatarPagination({
@@ -56,18 +49,8 @@ export default function HomePage() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  const handleFiltersChange = useCallback((newFilters: any) => {
-    console.log('🔍 Filters changed:', newFilters)
-    setFilters(newFilters)
-  }, [setFilters])
-
   const handleClearAvatarError = () => {
     clearAvatarError()
-  }
-
-  const handleDismissFreeLimit = () => {
-    dismissFreeLimitModal()
-    console.log('🚫 User dismissed free limit modal')
   }
 
   // Show loading while auth is initializing
@@ -87,7 +70,7 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-background">
       {/* Navigation Loading Overlay */}
-      {navigating && (
+      {sessionLoading && (
         <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50">
           <div className="text-center text-white space-y-4">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
@@ -106,11 +89,11 @@ export default function HomePage() {
           <AlertsSection
             error={error}
             avatarError={avatarError}
-            hasReachedFreeLimit={freeLimitExceeded}
+            hasReachedFreeLimit={false}
             onClearError={clearError}
             onClearAvatarError={handleClearAvatarError}
             onLogin={login}
-            onDismissFreeLimit={handleDismissFreeLimit}
+            onDismissFreeLimit={() => {}}
           />
 
           {/* Hero Section */}
@@ -121,21 +104,13 @@ export default function HomePage() {
           />
         </div>
 
-        {/* Filters */}
-        <AvatarFilters
-          filters={filters}
-          filterOptions={filterOptions}
-          onFiltersChange={handleFiltersChange}
-          disabled={loadingAvatars || sessionLoading}
-        />
-
         {/* Avatar Grid with Pagination */}
         <AvatarGrid
           avatars={avatars}
           loading={loadingAvatars}
-          hasReachedFreeLimit={freeLimitExceeded}
+          hasReachedFreeLimit={false}
           sessionLoading={sessionLoading}
-          selectedAvatarId={null} // Could track this if needed
+          selectedAvatarId={null}
           onStartChat={handleStartChat}
           pagination={pagination}
           onPageChange={handlePageChange}

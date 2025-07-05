@@ -11,7 +11,6 @@ on:
   push:
     branches:
       - main
-      - develop
     paths-ignore:
       - 'README.md'
       - 'docs/**'
@@ -31,7 +30,6 @@ on:
         type: choice
         options:
           - production
-          - development
       components:
         description: 'Components to deploy'
         required: true
@@ -76,13 +74,7 @@ jobs:
       - name: 🎯 Determine deployment environment
         id: determine-env
         run: |
-          if [ "${{ github.event.inputs.environment }}" != "" ]; then
-            echo "environment=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
-          elif [ "${{ github.ref }}" == "refs/heads/main" ]; then
-            echo "environment=production" >> $GITHUB_OUTPUT
-          else
-            echo "environment=development" >> $GITHUB_OUTPUT
-          fi
+          echo "environment=production" >> $GITHUB_OUTPUT
 
       - name: 🔍 Detect what changed
         id: changes
@@ -232,7 +224,6 @@ jobs:
 
       - name: 🗄️ Create database backup
         id: backup
-        if: needs.detect-changes.outputs.environment == 'production'
         run: |
           cd apps/api
           BACKUP_ID="backup-$(date +%Y%m%d-%H%M%S)-$(git rev-parse --short HEAD)"
@@ -250,16 +241,16 @@ jobs:
           cd apps/api
           npm run db:generate
         env:
-          DATABASE_URL: ${{ needs.detect-changes.outputs.environment == 'production' && secrets.DATABASE_URL || secrets.DATABASE_URL_DEV }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
       - name: 🔄 Run database migrations
         run: |
           cd apps/api
-          echo "🚀 Running ${{ needs.detect-changes.outputs.environment }} database migrations..."
+          echo "🚀 Running production database migrations..."
           npm run db:migrate:deploy
           echo "✅ Database migrations completed successfully"
         env:
-          DATABASE_URL: ${{ needs.detect-changes.outputs.environment == 'production' && secrets.DATABASE_URL || secrets.DATABASE_URL_DEV }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
       - name: ✅ Verify database schema
         run: |
@@ -303,7 +294,7 @@ jobs:
             verifySchema();
           "
         env:
-          DATABASE_URL: ${{ needs.detect-changes.outputs.environment == 'production' && secrets.DATABASE_URL || secrets.DATABASE_URL_DEV }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
       - name: 📊 Set migration result
         id: migration-result
@@ -348,7 +339,7 @@ jobs:
       - name: 🔨 Build API
         run: |
           cd apps/api
-          echo "🔨 Building API for ${{ needs.detect-changes.outputs.environment }}..."
+          echo "🔨 Building API for production..."
           npm run build
           echo "✅ API build completed"
 
@@ -356,54 +347,29 @@ jobs:
         id: deploy
         run: |
           cd apps/api
-          ENV="${{ needs.detect-changes.outputs.environment }}"
+          echo "🚀 Deploying API to production environment..."
           
-          echo "🚀 Deploying API to $ENV environment..."
+          # Set secrets for the production environment
+          echo "${{ secrets.DATABASE_URL }}" | wrangler secret put DATABASE_URL --env production
+          echo "${{ secrets.PRIVY_APP_ID }}" | wrangler secret put PRIVY_APP_ID --env production
+          echo "${{ secrets.PRIVY_APP_SECRET }}" | wrangler secret put PRIVY_APP_SECRET --env production
+          echo "${{ secrets.JWT_SECRET }}" | wrangler secret put JWT_SECRET --env production
+          echo "${{ secrets.OPENAI_API_KEY }}" | wrangler secret put OPENAI_API_KEY --env production
           
-          # Set secrets for the environment
-          if [ "$ENV" == "production" ]; then
-            echo "${{ secrets.DATABASE_URL }}" | wrangler secret put DATABASE_URL --env production
-            echo "${{ secrets.PRIVY_APP_ID }}" | wrangler secret put PRIVY_APP_ID --env production
-            echo "${{ secrets.PRIVY_APP_SECRET }}" | wrangler secret put PRIVY_APP_SECRET --env production
-            echo "${{ secrets.JWT_SECRET }}" | wrangler secret put JWT_SECRET --env production
-            echo "${{ secrets.OPENAI_API_KEY }}" | wrangler secret put OPENAI_API_KEY --env production
-            
-            # Optional: Set OpenAI model configuration for production
-            if [ "${{ secrets.OPENAI_MODEL }}" != "" ]; then
-              echo "${{ secrets.OPENAI_MODEL }}" | wrangler secret put OPENAI_MODEL --env production
-            fi
-            if [ "${{ secrets.OPENAI_MAX_TOKENS }}" != "" ]; then
-              echo "${{ secrets.OPENAI_MAX_TOKENS }}" | wrangler secret put OPENAI_MAX_TOKENS --env production
-            fi
-            if [ "${{ secrets.OPENAI_TEMPERATURE }}" != "" ]; then
-              echo "${{ secrets.OPENAI_TEMPERATURE }}" | wrangler secret put OPENAI_TEMPERATURE --env production
-            fi
-            
-            echo "🚀 Starting deployment to production..."
-            wrangler deploy --env production
-            echo "✅ Deployment command completed"
-          else
-            echo "${{ secrets.DATABASE_URL_DEV }}" | wrangler secret put DATABASE_URL --env development
-            echo "${{ secrets.PRIVY_APP_ID_DEV }}" | wrangler secret put PRIVY_APP_ID --env development
-            echo "${{ secrets.PRIVY_APP_SECRET_DEV }}" | wrangler secret put PRIVY_APP_SECRET --env development
-            echo "${{ secrets.JWT_SECRET_DEV }}" | wrangler secret put JWT_SECRET --env development
-            echo "${{ secrets.OPENAI_API_KEY_DEV }}" | wrangler secret put OPENAI_API_KEY --env development
-            
-            # Optional: Set OpenAI model configuration for development
-            if [ "${{ secrets.OPENAI_MODEL_DEV }}" != "" ]; then
-              echo "${{ secrets.OPENAI_MODEL_DEV }}" | wrangler secret put OPENAI_MODEL --env development
-            fi
-            if [ "${{ secrets.OPENAI_MAX_TOKENS_DEV }}" != "" ]; then
-              echo "${{ secrets.OPENAI_MAX_TOKENS_DEV }}" | wrangler secret put OPENAI_MAX_TOKENS --env development
-            fi
-            if [ "${{ secrets.OPENAI_TEMPERATURE_DEV }}" != "" ]; then
-              echo "${{ secrets.OPENAI_TEMPERATURE_DEV }}" | wrangler secret put OPENAI_TEMPERATURE --env development
-            fi
-            
-            echo "🚀 Starting deployment to development..."
-            wrangler deploy --env development
-            echo "✅ Deployment command completed"
+          # Optional: Set OpenAI model configuration for production
+          if [ "${{ secrets.OPENAI_MODEL }}" != "" ]; then
+            echo "${{ secrets.OPENAI_MODEL }}" | wrangler secret put OPENAI_MODEL --env production
           fi
+          if [ "${{ secrets.OPENAI_MAX_TOKENS }}" != "" ]; then
+            echo "${{ secrets.OPENAI_MAX_TOKENS }}" | wrangler secret put OPENAI_MAX_TOKENS --env production
+          fi
+          if [ "${{ secrets.OPENAI_TEMPERATURE }}" != "" ]; then
+            echo "${{ secrets.OPENAI_TEMPERATURE }}" | wrangler secret put OPENAI_TEMPERATURE --env production
+          fi
+          
+          echo "🚀 Starting deployment to production..."
+          wrangler deploy --env production
+          echo "✅ Deployment command completed"
           
           DEPLOYMENT_ID="api-$(date +%Y%m%d-%H%M%S)"
           echo "deployment-id=$DEPLOYMENT_ID" >> $GITHUB_OUTPUT
@@ -415,11 +381,7 @@ jobs:
       - name: 🔗 Get API URL
         id: get-api-url
         run: |
-          if [ "${{ needs.detect-changes.outputs.environment }}" == "production" ]; then
-            echo "url=https://sparkmind-api.workers.dev" >> $GITHUB_OUTPUT
-          else
-            echo "url=https://sparkmind-api-dev.workers.dev" >> $GITHUB_OUTPUT
-          fi
+          echo "url=https://sparkmind-api.workers.dev" >> $GITHUB_OUTPUT
 
       - name: 🏥 API Health Check
         run: |
@@ -475,7 +437,7 @@ jobs:
 
       - name: 🏗️ Create Cloudflare Pages Project (if needed)
         run: |
-          PROJECT_NAME="${{ needs.detect-changes.outputs.environment == 'production' && 'sparkmind-web' || 'sparkmind-web-dev' }}"
+          PROJECT_NAME="sparkmind-web"
           echo "🔍 Checking if Pages project '$PROJECT_NAME' exists..."
           
           # Check if project exists
@@ -495,193 +457,86 @@ jobs:
 
       - name: 🔧 Configure Compatibility Flags
         run: |
-          PROJECT_NAME="${{ needs.detect-changes.outputs.environment == 'production' && 'sparkmind-web' || 'sparkmind-web-dev' }}"
+          PROJECT_NAME="sparkmind-web"
           echo "🔧 Setting nodejs_compat compatibility flag for '$PROJECT_NAME'..."
           
-          # Set compatibility flags for production environment
-          curl -X PATCH \
+          curl -X PATCH "https://api.cloudflare.com/client/v4/accounts/${{ secrets.CLOUDFLARE_ACCOUNT_ID }}/pages/projects/$PROJECT_NAME" \
             -H "Authorization: Bearer ${{ secrets.CLOUDFLARE_API_TOKEN }}" \
             -H "Content-Type: application/json" \
-            "https://api.cloudflare.com/client/v4/accounts/${{ secrets.CLOUDFLARE_ACCOUNT_ID }}/pages/projects/$PROJECT_NAME" \
-            -d '{
+            --data '{
               "deployment_configs": {
                 "production": {
-                  "compatibility_flags": ["nodejs_compat"],
-                  "compatibility_date": "2024-01-01"
-                },
-                "preview": {
-                  "compatibility_flags": ["nodejs_compat"],
-                  "compatibility_date": "2024-01-01"
+                  "compatibility_flags": ["nodejs_compat"]
                 }
               }
             }'
-          
-          echo "✅ Compatibility flags configured successfully"
+          echo "✅ Compatibility flags updated"
 
-      - name: 🔨 Build web application
+      - name: 🔨 Build Web App
         run: |
           cd apps/web
-          echo "🔨 Building web application for ${{ needs.detect-changes.outputs.environment }}..."
-          npm run build:cf
+          echo "🔨 Building web app for production..."
+          # Set API URL for the build
+          NEXT_PUBLIC_API_URL="${{ needs.deploy-api.outputs.api-url }}" npm run build
           echo "✅ Web build completed"
-          
-          # Verify the output directory was created
-          if [ -d ".vercel/output/static" ]; then
-            echo "✅ Output directory '.vercel/output/static' created successfully"
-            echo "📁 Contents:"
-            ls -la .vercel/output/static/ | head -10
-          else
-            echo "❌ Output directory '.vercel/output/static' not found!"
-            echo "📁 Available directories:"
-            find . -type d -name "*output*" -o -name "*vercel*" -o -name "*next*" -o -name "*dist*" | head -10
-            ls -la
-            exit 1
-          fi
         env:
-          NODE_ENV: production
-          NEXT_PUBLIC_API_URL: ${{ needs.deploy-api.outputs.api-url || (needs.detect-changes.outputs.environment == 'production' && 'https://sparkmind-api.workers.dev' || 'https://sparkmind-api-dev.workers.dev') }}
-          NEXT_PUBLIC_PRIVY_APP_ID: ${{ needs.detect-changes.outputs.environment == 'production' && secrets.NEXT_PUBLIC_PRIVY_APP_ID || secrets.NEXT_PUBLIC_PRIVY_APP_ID_DEV }}
-          NEXT_PUBLIC_APP_URL: ${{ needs.detect-changes.outputs.environment == 'production' && secrets.NEXT_PUBLIC_APP_URL || secrets.NEXT_PUBLIC_APP_URL_DEV }}
-          NEXT_PUBLIC_LIVEKIT_URL: ${{ needs.detect-changes.outputs.environment == 'production' && secrets.NEXT_PUBLIC_LIVEKIT_URL || secrets.NEXT_PUBLIC_LIVEKIT_URL_DEV }}
-
+          NEXT_PUBLIC_PRIVY_APP_ID: ${{ secrets.PRIVY_APP_ID }}
+          NEXT_PUBLIC_API_URL: ${{ needs.deploy-api.outputs.api-url }}
+          
       - name: 🚀 Deploy to Cloudflare Pages
         id: deploy-pages
-        uses: cloudflare/pages-action@v1
+        uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          projectName: ${{ needs.detect-changes.outputs.environment == 'production' && 'sparkmind-web' || 'sparkmind-web-dev' }}
-          directory: apps/web/.vercel/output/static
-          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
-          wranglerVersion: '3'
-
-      - name: 🏥 Web App Health Check
-        run: |
-          echo "🏥 Performing web app health check..."
-          sleep 30  # Give deployment time to propagate
-          
-          WEB_URL="${{ steps.deploy-pages.outputs.url }}"
-          MAX_ATTEMPTS=5
-          ATTEMPT=1
-          
-          while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
-            echo "🔍 Health check attempt $ATTEMPT/$MAX_ATTEMPTS..."
-            
-            if curl -f "$WEB_URL" --max-time 30 -L; then
-              echo "✅ Web app health check passed!"
-              break
-            elif [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
-              echo "❌ Web app health check failed after $MAX_ATTEMPTS attempts"
-              exit 1
-            else
-              echo "⏳ Waiting 15 seconds before retry..."
-              sleep 15
-              ATTEMPT=$((ATTEMPT + 1))
-            fi
-          done
-
-  post-deployment:
-    runs-on: ubuntu-latest
-    name: 📋 Post-deployment Summary
-    needs: [detect-changes, backup-and-migrate, deploy-api, deploy-web]
-    if: always() && needs.detect-changes.outputs.should-run == 'true'
-    
-    steps:
-      - name: 📊 Deployment Status Summary
-        run: |
-          echo "# 🚀 Full-Stack Deployment Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Environment:** \`${{ needs.detect-changes.outputs.environment }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "**Triggered by:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "**Deployment Type:** Multi-component (coordinated with API-only workflow)" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "## 📋 Deployment Plan" >> $GITHUB_STEP_SUMMARY
-          echo "| Component | Planned | Status | URL |" >> $GITHUB_STEP_SUMMARY
-          echo "|-----------|---------|--------|-----|" >> $GITHUB_STEP_SUMMARY
-          echo "| 🗄️ Database Migration | ${{ needs.detect-changes.outputs.deploy-api == 'true' && '✅' || '⏭️' }} | ${{ needs.backup-and-migrate.result == 'success' && '✅ Success' || needs.backup-and-migrate.result == 'skipped' && '⏭️ Skipped' || '❌ Failed' }} | - |" >> $GITHUB_STEP_SUMMARY
-          echo "| 🚀 API | ${{ needs.detect-changes.outputs.deploy-api == 'true' && '✅' || '⏭️' }} | ${{ needs.deploy-api.result == 'success' && '✅ Success' || needs.deploy-api.result == 'skipped' && '⏭️ Skipped' || '❌ Failed' }} | ${{ needs.deploy-api.outputs.api-url || 'N/A' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| 🌐 Web App | ${{ needs.detect-changes.outputs.deploy-web == 'true' && '✅' || '⏭️' }} | ${{ needs.deploy-web.result == 'success' && '✅ Success' || needs.deploy-web.result == 'skipped' && '⏭️ Skipped' || '❌ Failed' }} | ${{ needs.deploy-web.outputs.web-url || 'N/A' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "ℹ️ **Note:** API-only changes are handled by the dedicated API deployment workflow for faster iterations." >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-
-      - name: 🎉 Success Notification
-        if: |
-          (needs.detect-changes.outputs.deploy-api != 'true' || needs.deploy-api.result == 'success') &&
-          (needs.detect-changes.outputs.deploy-web != 'true' || needs.deploy-web.result == 'success')
-        run: |
-          echo "## 🎉 Deployment Completed Successfully!" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### 🔗 Access Your Application:" >> $GITHUB_STEP_SUMMARY
-          if [ "${{ needs.deploy-web.outputs.web-url }}" != "" ]; then
-            echo "- **🌐 Web Application:** [${{ needs.deploy-web.outputs.web-url }}](${{ needs.deploy-web.outputs.web-url }})" >> $GITHUB_STEP_SUMMARY
-          fi
-          if [ "${{ needs.deploy-api.outputs.api-url }}" != "" ]; then
-            echo "- **🚀 API Endpoint:** [${{ needs.deploy-api.outputs.api-url }}](${{ needs.deploy-api.outputs.api-url }})" >> $GITHUB_STEP_SUMMARY
-            echo "- **🏥 API Health:** [${{ needs.deploy-api.outputs.api-url }}/health](${{ needs.deploy-api.outputs.api-url }}/health)" >> $GITHUB_STEP_SUMMARY
-          fi
-
-      - name: 💬 Comment on PR
+          command: pages deploy apps/web/out --project-name=sparkmind-web --branch=main
+      
+      - name: 💬 Add PR comment with deployment URLs
         if: github.event_name == 'pull_request'
-        uses: actions/github-script@v7
+        uses: thollander/actions-comment-pull-request@v2
         with:
-          script: |
-            const apiDeployed = '${{ needs.deploy-api.result }}' === 'success';
-            const webDeployed = '${{ needs.deploy-web.result }}' === 'success';
-            const apiUrl = '${{ needs.deploy-api.outputs.api-url }}';
-            const webUrl = '${{ needs.deploy-web.outputs.web-url }}';
-            const environment = '${{ needs.detect-changes.outputs.environment }}';
-            
-            let comment = `🚀 **Deployment Preview Ready!**\n\n`;
-            comment += `**Environment:** \`${environment}\`\n\n`;
-            
-            if (apiDeployed && webDeployed) {
-              comment += `✅ **Full Stack Deployed**\n`;
-              comment += `- 🌐 **Web App:** [${webUrl}](${webUrl})\n`;
-              comment += `- 🚀 **API:** [${apiUrl}](${apiUrl})\n`;
-              comment += `- 🏥 **Health Check:** [${apiUrl}/health](${apiUrl}/health)\n`;
-            } else if (apiDeployed) {
-              comment += `✅ **API Deployed**\n`;
-              comment += `- 🚀 **API:** [${apiUrl}](${apiUrl})\n`;
-              comment += `- 🏥 **Health Check:** [${apiUrl}/health](${apiUrl}/health)\n`;
-            } else if (webDeployed) {
-              comment += `✅ **Web App Deployed**\n`;
-              comment += `- 🌐 **Web App:** [${webUrl}](${webUrl})\n`;
-            } else {
-              comment += `ℹ️ **No components were deployed** (no relevant changes detected)\n`;
-            }
-            
-            comment += `\n### 🧪 Testing Checklist:\n`;
-            if (webDeployed) {
-              comment += `- [ ] Web app loads correctly\n`;
-              comment += `- [ ] Navigation works as expected\n`;
-              comment += `- [ ] No console errors\n`;
-            }
-            if (apiDeployed) {
-              comment += `- [ ] API health check passes\n`;
-              comment += `- [ ] Database connectivity works\n`;
-            }
-            
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: comment
-            });
+          message: |
+            🚀 **Full-stack deployment preview ready!**
 
-      - name: 🚨 Failure Notification
-        if: failure()
+            - **Web App:** [${{ steps.deploy-pages.outputs.url }}](${{ steps.deploy-pages.outputs.url }})
+            - **API:** [${{ needs.deploy-api.outputs.api-url }}](${{ needs.deploy-api.outputs.api-url }})
+
+            *Note: This is a preview deployment. Changes will be deployed to production upon merge.*
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  deployment-status:
+    runs-on: ubuntu-latest
+    name: 📊 Final Deployment Status
+    needs: [detect-changes, deploy-api, deploy-web]
+    if: always()
+
+    steps:
+      - name: 📊 Report final status
         run: |
-          echo "# 🚨 Deployment Failed" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "## 🔄 Quick Recovery Options:" >> $GITHUB_STEP_SUMMARY
-          echo "1. **🔄 Revert & Redeploy:**" >> $GITHUB_STEP_SUMMARY
-          echo "   \`\`\`bash" >> $GITHUB_STEP_SUMMARY
-          echo "   git revert ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
-          echo "   git push origin main" >> $GITHUB_STEP_SUMMARY
-          echo "   \`\`\`" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "2. **🎯 Manual Deployment:** Use \`workflow_dispatch\` to deploy specific components" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "3. **🔍 Debug:** Check failed job logs above for specific errors" >> $GITHUB_STEP_SUMMARY 
+          echo "📊 Final Deployment Status:"
+          
+          echo "  - Environment: ${{ needs.detect-changes.outputs.environment }}"
+          
+          API_RESULT="${{ needs.deploy-api.result }}"
+          if [ "$API_RESULT" == "success" ]; then
+            echo "  - ✅ API Deployment: Success"
+            echo "    - URL: ${{ needs.deploy-api.outputs.api-url }}"
+          elif [ "$API_RESULT" == "skipped" ]; then
+            echo "  - ⏭️ API Deployment: Skipped"
+          else
+            echo "  - ❌ API Deployment: Failure"
+          fi
+          
+          WEB_RESULT="${{ needs.deploy-web.result }}"
+          if [ "$WEB_RESULT" == "success" ]; then
+            echo "  - ✅ Web Deployment: Success"
+            echo "    - URL: ${{ needs.deploy-web.outputs.web-url }}"
+          elif [ "$WEB_RESULT" == "skipped" ]; then
+            echo "  - ⏭️ Web Deployment: Skipped"
+          else
+            echo "  - ❌ Web Deployment: Failure"
+          fi
+          
+          if [ "$API_RESULT" == "failure" ] || [ "$WEB_RESULT" == "failure" ]; then
+            exit 1
+          fi 
