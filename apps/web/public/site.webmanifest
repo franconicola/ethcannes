@@ -1,7 +1,7 @@
 {
   "name": "SparkMind",
   "short_name": "SparkMind",
-  "description": "Connect with AI avatars in real-time conversations",
+  "description": "Connect with AI tutors in real-time conversations",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

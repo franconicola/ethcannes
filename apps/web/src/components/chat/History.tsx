@@ -165,7 +165,7 @@ export default function ChatHistory({ compact = false, className }: ChatHistoryP
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
                             <span className="font-medium text-sm">
-                              {message.messageType === 'USER' ? 'You' : 'Avatar'}
+                              {message.messageType === 'USER' ? 'You' : 'AI Tutor'}
                             </span>
                             <span className="text-xs text-muted-foreground">
                               {new Date(message.createdAt).toLocaleTimeString()}

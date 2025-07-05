@@ -34,7 +34,7 @@ export default function HomePage() {
   // Event handlers
   const handleStartChat = async (avatarId: string) => {
     try {
-      console.log('🚀 Starting chat with avatar:', avatarId)
+      console.log('🚀 Starting chat with AI tutor:', avatarId)
       await createSession(avatarId)
       // Navigation to session page is handled automatically in SessionContext
     } catch (err) {
@@ -60,7 +60,7 @@ export default function HomePage() {
         <Loader 
           variant="orbit" 
           size="lg" 
-          message="Initializing avatars..." 
+          message="Initializing AI tutors..." 
           className="space-y-6"
         />
       </div>
@@ -75,7 +75,7 @@ export default function HomePage() {
           <div className="text-center text-white space-y-4">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
             <div className="space-y-2">
-              <p className="text-lg font-semibold text-white">Starting Avatar Session</p>
+              <p className="text-lg font-semibold text-white">Starting AI Tutor Session</p>
               <p className="text-sm text-white/80">Please wait while we initialize your conversation...</p>
             </div>
           </div>
@@ -104,7 +104,7 @@ export default function HomePage() {
           />
         </div>
 
-        {/* Avatar Grid with Pagination */}
+        {/* AI Tutor Grid with Pagination */}
         <AvatarGrid
           avatars={avatars}
           loading={loadingAvatars}

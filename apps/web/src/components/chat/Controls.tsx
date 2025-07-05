@@ -37,7 +37,7 @@ export function ChatControls({
           </span>
           <h3 className="font-medium text-sm">Free Limit Reached</h3>
           <p className="text-xs text-muted-foreground">
-            You&apos;ve reached your free message limit. Sign in to continue chatting with avatars.
+            You&apos;ve reached your free message limit. Sign in to continue chatting with AI tutors.
           </p>
         </div>
         <Button onClick={onLogin} size="sm" className="w-full">
@@ -52,7 +52,7 @@ export function ChatControls({
       <CardHeader>
         <CardTitle className="text-lg">Send Message</CardTitle>
         <CardDescription>
-          Type your message and the avatar will speak it aloud
+          Type your message and the AI tutor will speak it aloud
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col justify-between h-full space-y-6">
@@ -62,7 +62,7 @@ export function ChatControls({
             <Label htmlFor="message-input">Your Message</Label>
             <Textarea
               id="message-input"
-              placeholder="Enter text for avatar to speak..."
+              placeholder="Enter text for AI tutor to speak..."
               value={text}
               onChange={(e) => setText(e.target.value)}
               disabled={speaking || loading}
@@ -88,7 +88,7 @@ export function ChatControls({
             size="lg"
           >
             <Send className="mr-2 h-4 w-4" />
-                         {speaking ? "Avatar Speaking..." : 
+                         {speaking ? "AI Tutor Speaking..." : 
               loading ? (
                 <div className="flex items-center gap-2">
                   <Loader variant="dots" size="sm" message="" />
@@ -106,7 +106,7 @@ export function ChatControls({
                   <Loader 
                     variant="wave" 
                     size="md" 
-                    message="Avatar is speaking..." 
+                    message="AI tutor is speaking..." 
                     className="text-primary"
                   />
                 </div>

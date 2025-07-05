@@ -405,7 +405,7 @@ NEXT_PUBLIC_API_URL="http://localhost:3000/api"`}</pre>
             
             <div className="pt-4 border-t">
               <p className="text-sm text-muted-foreground">
-                <strong>Note:</strong> You can still browse avatars without wallet connectivity.
+                <strong>Note:</strong> You can still browse AI tutors without wallet connectivity.
               </p>
             </div>
           </div>

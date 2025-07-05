@@ -227,7 +227,7 @@ export default function SessionsPage() {
             <div className="space-y-2">
               <h1 className="text-3xl font-bold tracking-tight">Your Sessions</h1>
               <p className="text-muted-foreground">
-                View and manage your previous avatar conversations.
+                View and manage your previous AI tutor conversations.
               </p>
             </div>
             
@@ -240,7 +240,7 @@ export default function SessionsPage() {
                   <div className="space-y-2">
                     <h3 className="text-lg font-semibold">Sign in to view your sessions</h3>
                     <p className="text-muted-foreground text-sm">
-                      Please log in to access your conversation history and previous avatar sessions.
+                      Please log in to access your conversation history and previous AI tutor sessions.
                     </p>
                   </div>
                   <Button onClick={login} className="mt-4">
@@ -263,7 +263,7 @@ export default function SessionsPage() {
             <div className="space-y-2">
               <h1 className="text-3xl font-bold tracking-tight">Your Sessions</h1>
               <p className="text-muted-foreground">
-                View and continue your previous avatar conversations.
+                View and continue your previous AI tutor conversations.
               </p>
             </div>
             {sessions.length > 0 && sessions.some(s => s.status === 'ENDED') && (
@@ -319,7 +319,7 @@ export default function SessionsPage() {
                   <div className="space-y-2">
                     <h3 className="text-lg font-semibold">No sessions yet</h3>
                     <p className="text-muted-foreground text-sm">
-                      Start a conversation with an avatar to see your sessions here.
+                      Start a conversation with an AI tutor to see your sessions here.
                     </p>
                   </div>
                   <Button asChild>

@@ -15,11 +15,18 @@ export interface PaginationMeta {
   page: number
   totalPages: number
   totalItems: number
-  limit?: number
+  limit: number
   hasNextPage?: boolean
   hasPrevPage?: boolean
   nextPage?: number | null
   prevPage?: number | null
+  total: number
+}
+
+export interface PaginationProps {
+  pagination: PaginationMeta
+  onPageChange: (page: number) => void
+  disabled?: boolean
 }
 
 export interface AvatarCardProps {
@@ -56,4 +63,8 @@ export interface AlertsSectionProps {
   onClearAvatarError: () => void
   onLogin: () => void
   onDismissFreeLimit: () => void
+}
+
+export interface AvatarLoadingSkeletonProps {
+  count?: number
 } 

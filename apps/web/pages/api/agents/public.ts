@@ -60,11 +60,11 @@ export default async function handler(
     // Agent to image/GIF mapping
     const agentMediaMapping: Record<string, { image: string; gif: string }> = {
       'professional-advisor': { image: 'crocodile.png', gif: 'crocodile.gif' },
-      'creative-mentor': { image: 'brain.svg', gif: 'mouse.gif' },
-      'technical-expert': { image: 'robot.svg', gif: 'turtle.gif' },
-      'wellness-coach': { image: 'mouse.png', gif: 'crocodile.gif' },
-      'learning-companion': { image: 'brain.svg', gif: 'mouse.gif' },
-      'mindfulness-guide': { image: 'robot.svg', gif: 'turtle.gif' }
+      'creative-mentor': { image: 'mouse.png', gif: 'mouse.gif' },
+      'technical-expert': { image: 'turtle.png', gif: 'turtle.gif' },
+      // 'wellness-coach': { image: 'mouse.png', gif: 'crocodile.gif' },
+      // 'learning-companion': { image: 'brain.svg', gif: 'mouse.gif' },
+      // 'mindfulness-guide': { image: 'robot.svg', gif: 'turtle.gif' }
     };
 
     // Helper function to get media URLs
