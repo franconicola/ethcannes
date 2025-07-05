@@ -61,8 +61,8 @@ export default function SessionPage() {
         }
         
         const data = await response.json()
-        if (data.success && data.agents) {
-          setAvatars(data.agents)
+        if (data.success && data.data && data.data.agents) {
+          setAvatars(data.data.agents)
         } else {
           throw new Error('Invalid response format')
         }

@@ -126,8 +126,8 @@ export const useAIAgentAPI = () => {
         throw new Error(response.message || 'Failed to fetch AI agents');
       }
 
-      console.log('Available AI agents fetched successfully:', response.agents.length);
-      return response.agents;
+      console.log('Available AI agents fetched successfully:', response.data.agents.length);
+      return response.data.agents;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch AI agents';
       console.error('Failed to fetch AI agents:', errorMessage);

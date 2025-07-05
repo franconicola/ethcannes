@@ -71,10 +71,10 @@ export function useAvatarPagination(options: UseAvatarPaginationOptions = {}): U
 
         const data = await response.json()
 
-        if (data.success && Array.isArray(data.agents)) {
-          setAvatars(data.agents)
-          setPagination(data.pagination || { page: 1, totalPages: 1, totalItems: data.agents.length })
-          console.log(`✅ Loaded ${data.agents.length} avatars`)
+        if (data.success && data.data && Array.isArray(data.data.agents)) {
+          setAvatars(data.data.agents)
+          setPagination(data.data.pagination || { page: 1, totalPages: 1, totalItems: data.data.agents.length })
+          console.log(`✅ Loaded ${data.data.agents.length} avatars`)
         } else {
           throw new Error(data.error || 'Invalid response format')
         }
@@ -89,7 +89,7 @@ export function useAvatarPagination(options: UseAvatarPaginationOptions = {}): U
         setLoading(false)
       }
     },
-    [buildApiUrl, apiUrl, currentPage, initialLimit],
+    [currentPage, initialLimit, apiUrl],
   )
 
   useEffect(() => {
