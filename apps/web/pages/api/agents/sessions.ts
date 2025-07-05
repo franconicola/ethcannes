@@ -3,24 +3,23 @@ import { PrismaClient } from '@prisma/client';
 import crypto from 'crypto';
 import { NextApiRequest, NextApiResponse } from 'next';
 import {
-  createSuccessResponse,
-  errorResponse,
-  getAnonymousSessionId,
-  getAuthHeader,
-  getEnvVars,
-  handleCORS,
-  safeParseJSON,
-  validateMethod,
-  validateRequiredFields
+    errorResponse,
+    getAnonymousSessionId,
+    getAuthHeader,
+    getEnvVars,
+    handleCORS,
+    safeParseJSON,
+    validateMethod,
+    validateRequiredFields
 } from '../../../lib/api/middleware';
 import { getAgentById } from '../../../lib/api/services/aiAgentService';
 import { getOrCreateAnonymousSession } from '../../../lib/api/services/sessionService';
 import {
-  ApiResponse,
-  AuthInfo,
-  CreateAgentSessionRequest,
-  CreateSessionResponse,
-  EnvVars
+    ApiResponse,
+    AuthInfo,
+    CreateAgentSessionRequest,
+    CreateSessionResponse,
+    EnvVars
 } from '../../../lib/api/types';
 
 // Handle the jose import issue gracefully
@@ -144,7 +143,7 @@ export default async function handler(
       }
     };
 
-    res.status(200).json(createSuccessResponse(responseData));
+    res.status(200).json(responseData);
 
   } catch (error) {
     console.error('Failed to create agent session:', error);

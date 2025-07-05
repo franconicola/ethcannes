@@ -1,7 +1,6 @@
 // Dynamic agent sessions endpoint for chat, stop, and conversation
 import { NextApiRequest, NextApiResponse } from 'next';
 import {
-    createSuccessResponse,
     errorResponse,
     getAnonymousSessionId,
     getAuthHeader,
@@ -192,7 +191,7 @@ async function handleChat(
     freeMessagesRemaining: 10
   };
 
-  res.status(200).json(createSuccessResponse(responseData));
+  res.status(200).json(responseData);
 }
 
 // Handle stop functionality
@@ -258,7 +257,7 @@ async function handleStop(
     }
   };
 
-  res.status(200).json(createSuccessResponse(responseData));
+  res.status(200).json(responseData);
 }
 
 // Handle conversation history
@@ -322,5 +321,5 @@ async function handleConversation(
     isAuthenticated: authInfo.isAuthenticated,
   };
 
-  res.status(200).json(createSuccessResponse(responseData));
+  res.status(200).json(responseData);
 } 
