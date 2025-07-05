@@ -4,19 +4,16 @@
   "private": true,
   "type": "module",
   "workspaces": [
-    "apps/*"
+    "apps/web"
   ],
   "scripts": {
     "dev": "npm run dev --workspace=apps/web",
     "dev:web": "npm run dev --workspace=apps/web",
     "dev:https": "npm run dev:https --workspace=apps/web",
-    "dev:api": "npm run dev --workspace=apps/api",
     "build": "npm run build --workspace=apps/web",
     "build:web": "npm run build --workspace=apps/web",
-    "build:api": "npm run build --workspace=apps/api",
     "start": "npm run start --workspace=apps/web",
     "start:web": "npm run start --workspace=apps/web",
-    "start:api": "npm run start --workspace=apps/api",
     "lint": "npm run lint --workspaces",
     "type-check": "npm run type-check --workspaces",
     "db:generate": "npm run db:generate --workspace=apps/web",
@@ -30,6 +27,7 @@
   "dependencies": {
     "@walletconnect/heartbeat": "^1.2.2",
     "busboy": "^1.6.0",
+    "libphonenumber-js": "^1.12.9",
     "react-native-uuid": "^2.0.3"
   },
   "devDependencies": {

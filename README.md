@@ -20,22 +20,22 @@ A modern full-stack application for real-time conversations with AI agents using
 ```
 sparkmind/
 ├── apps/
-│   ├── web/                  # Next.js 15 web application
-│   │   ├── src/
-│   │   │   ├── app/         # App router pages
-│   │   │   ├── components/  # React components
-│   │   │   ├── contexts/    # React contexts
-│   │   │   └── hooks/       # Custom hooks
-│   │   └── public/          # Static assets
-│   └── api/                 # Cloudflare Workers API
+│   └── web/                  # Next.js 15 web application
 │       ├── src/
-│       │   ├── routes/      # API endpoints (auth, users, agents)
+│       │   ├── app/         # App router pages
+│       │   ├── components/  # React components
+│       │   ├── contexts/    # React contexts
+│       │   └── hooks/       # Custom hooks
+│       ├── pages/api/       # Vercel API Functions
+│       │   ├── auth/        # Authentication endpoints
+│       │   └── agents/      # AI agent endpoints
+│       ├── lib/api/         # API utilities and services
 │       │   ├── services/    # Business logic
-│       │   └── utils/       # Utilities
-│       └── prisma/          # Database schema
-├── scripts/                 # Deployment and utility scripts
-└── packages/                # Shared packages
-    └── ui/                  # Shared UI components
+│       │   ├── utils/       # Utilities
+│       │   └── types.ts     # TypeScript types
+│       ├── prisma/          # Database schema
+│       └── public/          # Static assets
+└── vercel.json              # Vercel deployment configuration
 ```
 
 ## 🛠️ Tech Stack
@@ -49,16 +49,16 @@ sparkmind/
 - **LiveKit** for WebRTC communication
 
 ### Backend
-- **Cloudflare Workers** for serverless API
+- **Vercel Functions** for serverless API
 - **Prisma** with PostgreSQL database
 - **OpenAI API** for AI agent responses
-- **Cloudflare D1** for edge database
+- **TypeScript** for type safety
 
 
 
 ## 🔧 Environment Variables
 
-### API (.env)
+### Web App (.env.local)
 ```bash
 # Database
 DATABASE_URL="your_postgresql_connection_string"
@@ -72,17 +72,15 @@ OPENAI_TEMPERATURE="0.7"
 # Privy Authentication
 PRIVY_APP_ID="your_privy_app_id"
 PRIVY_APP_SECRET="your_privy_app_secret"
+NEXT_PUBLIC_PRIVY_APP_ID="your_privy_app_id"
+
+# JWT Secret
+JWT_SECRET="your_jwt_secret_key"
 
 # LiveKit (optional)
 LIVEKIT_API_KEY="your_livekit_api_key"
 LIVEKIT_API_SECRET="your_livekit_api_secret"
 LIVEKIT_WS_URL="wss://your-livekit-server.livekit.cloud"
-```
-
-### Web (.env.local)
-```bash
-NEXT_PUBLIC_PRIVY_APP_ID="your_privy_app_id"
-NEXT_PUBLIC_API_URL="http://localhost:3001/api"
 ```
 
 
@@ -108,62 +106,48 @@ cp .env.example .env
 
 4. **Set up the database**
 ```bash
-cd apps/api
+cd apps/web
 npx prisma migrate dev
 npx prisma db seed
 ```
 
-5. **Start all applications**
+5. **Start the application**
 ```bash
-# Start all apps concurrently
+# Start the web app (includes API functions)
 npm run dev
 
-# Or start individually:
-npm run dev:web    # Web app at http://localhost:3000
-npm run dev:api    # API at http://localhost:3001
+# Web app and API available at http://localhost:3000
 ```
 
-## ☁️ Cloudflare Deployment
+## ☁️ Vercel Deployment
 
-The platform is designed for Cloudflare infrastructure deployment:
-
-### Quick Deployment Check
-
-Before deploying, run our validation script:
-
-```bash
-./scripts/deploy-check.sh
-```
-
-This will check all prerequisites and validate your environment configuration.
+The platform is designed for Vercel deployment:
 
 ### Automatic Deployment
 
-1. **Configure GitHub Secrets** (see [DEPLOYMENT.md](DEPLOYMENT.md))
-2. **Push to main branch** → Automatic production deployment
-3. **Push to develop branch** → Automatic development deployment
+1. **Configure Vercel Project** and environment variables
+2. **Connect GitHub repository** to Vercel
+3. **Push to main branch** → Automatic production deployment
+4. **Push to other branches** → Automatic preview deployments
 
 ### Manual Deployment
 
 ```bash
-# Deploy API to Cloudflare Workers
-cd apps/api
+# Deploy to Vercel
 npm run deploy
 
-# Deploy Web App to Cloudflare Pages
-cd apps/web
-npm run build:cf
-npm run deploy
+# Deploy preview
+npm run deploy:preview
 ```
 
 ### Deployment Architecture
 
-- **API**: Cloudflare Workers (Serverless)
-- **Web App**: Cloudflare Pages (Static + Edge functions)
+- **Full-stack App**: Vercel (Static + Serverless Functions)
+- **API**: Vercel Functions (TypeScript)
 - **Database**: PostgreSQL (Neon, Supabase, etc.)
-- **CDN**: Cloudflare Global Network
+- **CDN**: Vercel Global Edge Network
 
-For detailed deployment instructions, see [DEPLOYMENT.md](DEPLOYMENT.md).
+Environment variables are managed through the Vercel dashboard or CLI.
 
 ## 📚 API Documentation
 
@@ -198,7 +182,14 @@ npm run build
 ### Database Management
 ```bash
 # Generate Prisma client
+cd apps/web
 npx prisma generate
+
+# Apply database migrations
+npx prisma migrate deploy
+
+# Open Prisma Studio
+npx prisma studio
 
 # Reset database
 npx prisma migrate reset

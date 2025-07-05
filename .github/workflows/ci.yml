@@ -180,7 +180,7 @@ jobs:
 
   test-api:
     runs-on: ubuntu-latest
-    name: 🚀 Test API
+    name: 🚀 Test API Functions
     needs: [setup, lint-and-format]
     
     services:
@@ -219,7 +219,7 @@ jobs:
 
       - name: 🗄️ Setup test database
         run: |
-          cd apps/api
+          cd apps/web
           echo "🗄️ Setting up test database..."
           npm run db:generate
           npm run db:push
@@ -227,16 +227,16 @@ jobs:
         env:
           DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_db
 
-      - name: 🔧 Build API
+      - name: 🔧 TypeScript check for API functions
         run: |
-          cd apps/api
-          echo "🔨 Building API..."
-          npm run build
-          echo "✅ API build completed"
+          cd apps/web
+          echo "🔨 Running TypeScript check for API functions..."
+          npx tsc --noEmit
+          echo "✅ TypeScript check completed"
 
       - name: 🧪 Run API tests (if available)
         run: |
-          cd apps/api
+          cd apps/web
           if npm run --silent test > /dev/null 2>&1; then
             echo "🧪 Running API tests..."
             npm test
@@ -280,15 +280,9 @@ jobs:
           echo "📦 Root package audit:"
           npm audit --audit-level moderate || true
           
-          echo "🌐 Web app audit:"
+          echo "🌐 Web app (includes API functions) audit:"
           cd apps/web && npm audit --audit-level high || true
           cd ..
-          
-          echo "🚀 API audit:"
-          cd apps/api && npm audit --audit-level high || true
-          cd ..
-          
-
           
           echo "✅ Security audit completed"
 
@@ -349,22 +343,22 @@ jobs:
 
       - name: 🗄️ Setup integration test database
         run: |
-          cd apps/api
+          cd apps/web
           npm run db:generate
           npm run db:push
         env:
           DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_db
 
-      - name: 🚀 Start API server
+      - name: 🚀 Start web server with API functions
         run: |
-          cd apps/api
+          cd apps/web
           npm run build
           npm start &
-          sleep 5
-          echo "API_PID=$!" >> $GITHUB_ENV
+          sleep 10
+          echo "WEB_PID=$!" >> $GITHUB_ENV
         env:
           DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_db
-          PORT: 3001
+          PORT: 3000
         continue-on-error: true
 
       - name: 🧪 Run integration tests
@@ -372,10 +366,11 @@ jobs:
           echo "🧪 Running integration tests..."
           
           # Test API health endpoint
-          curl -f http://localhost:3001/health || echo "❌ API health check failed"
+          curl -f http://localhost:3000/api/health || echo "❌ API health check failed"
           
           # Test basic API endpoints
-          curl -f http://localhost:3001/api/users || echo "ℹ️ Users endpoint test"
+          curl -f http://localhost:3000/api/debug || echo "ℹ️ Debug endpoint test"
+          curl -f http://localhost:3000/api/agents/public || echo "ℹ️ Agents endpoint test"
           
           echo "✅ Integration tests completed"
         continue-on-error: true
@@ -396,7 +391,7 @@ jobs:
           echo "| 🔍 Lint & Format | ${{ needs.lint-and-format.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| 🔧 Type Check | ⏭️ Skipped (shadcn-ui compatibility issue) |" >> $GITHUB_STEP_SUMMARY
           echo "| 🌐 Web Tests | ${{ needs.test-web.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| 🚀 API Tests | ${{ needs.test-api.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🚀 API Function Tests | ${{ needs.test-api.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
 
           echo "| 🔒 Security Audit | ${{ needs.security-audit.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| 🔄 Integration Tests | ${{ needs.integration-tests.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
