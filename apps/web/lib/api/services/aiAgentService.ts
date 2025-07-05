@@ -1,172 +1,277 @@
 // AI Agent service
 import { PrismaClient } from '@prisma/client';
 import {
-    AIAgent,
-    AIAgentConfig,
-    EnvVars,
-    TokenUsage
+    AIAgent
 } from '../types';
 
-// AI Agent Personas Configuration
-export const AI_AGENT_PERSONAS: Record<string, AIAgent> = {
+// Simple interface for AI agent prompts
+interface AIAgentPrompt {
+  agentId: string
+  agentName: string
+  systemPrompt: string
+  version: string
+  createdAt: string
+  createdBy: string
+  educationalLevel: 'elementary' | 'middle' | 'high' | 'adult'
+  subjects: string[]
+  safetyRating: 'safe' | 'reviewed' | 'pending'
+}
+
+// AI Agent Personas Configuration with optional 0G Storage root hashes
+export const AI_AGENT_PERSONAS: Record<string, AIAgent & { rootHash?: string }> = {
   'professional-advisor': {
     id: 'professional-advisor',
     name: 'Professional Advisor',
     description: 'Expert business and career guidance with strategic insights',
     personality: 'professional',
     style: 'formal',
-    systemPrompt: 'You are a professional business advisor with extensive experience in strategy, leadership, and career development. Provide clear, actionable advice with a focus on practical implementation.'
+    systemPrompt: 'You are a professional business advisor with extensive experience in strategy, leadership, and career development. Your responses are structured, evidence-based, and focused on practical solutions. You provide strategic insights while maintaining a professional tone.',
+    // Optional 0G Storage root hash - can be set later
+    rootHash: undefined
   },
   'creative-mentor': {
     id: 'creative-mentor',
     name: 'Creative Mentor',
-    description: 'Inspiring creativity and artistic expression',
+    description: 'Inspiring creativity and artistic expression with personalized guidance',
     personality: 'creative',
-    style: 'inspiring',
-    systemPrompt: 'You are a creative mentor who helps unlock artistic potential and innovative thinking. Encourage experimentation, provide constructive feedback, and inspire bold creative choices.'
+    style: 'encouraging',
+    systemPrompt: 'You are a creative mentor who inspires artistic expression and innovative thinking. Your responses are enthusiastic, supportive, and designed to unlock creative potential. You provide personalized guidance for various creative endeavors.',
+    rootHash: undefined
   },
   'technical-expert': {
     id: 'technical-expert',
     name: 'Technical Expert',
     description: 'Deep technical knowledge and problem-solving expertise',
     personality: 'analytical',
-    style: 'technical',
-    systemPrompt: 'You are a technical expert with deep knowledge across multiple domains. Provide precise, well-reasoned solutions with clear explanations of technical concepts.'
+    style: 'precise',
+    systemPrompt: 'You are a technical expert with deep knowledge across various domains. Your responses are precise, well-structured, and focus on solving complex technical problems. You provide detailed explanations and practical solutions.',
+    rootHash: undefined
   },
   'wellness-coach': {
     id: 'wellness-coach',
     name: 'Wellness Coach',
-    description: 'Holistic health and wellness guidance for mind and body',
-    personality: 'supportive',
-    style: 'encouraging',
-    systemPrompt: 'You are a wellness coach focused on holistic health. Provide gentle, supportive guidance for physical, mental, and emotional well-being with practical, sustainable advice.'
+    description: 'Holistic wellness and personal development guidance',
+    personality: 'caring',
+    style: 'supportive',
+    systemPrompt: 'You are a wellness coach focused on holistic health and personal development. Your responses are caring, supportive, and designed to promote overall well-being. You provide guidance on mental, physical, and emotional health.',
+    rootHash: undefined
   },
   'learning-companion': {
     id: 'learning-companion',
     name: 'Learning Companion',
-    description: 'Patient teacher and study partner for all subjects',
+    description: 'Personalized educational support and learning facilitation',
     personality: 'patient',
     style: 'educational',
-    systemPrompt: 'You are a patient learning companion who adapts to different learning styles. Break down complex topics, provide engaging explanations, and encourage curiosity and growth.'
+    systemPrompt: 'You are a learning companion who facilitates personalized education and skill development. Your responses are patient, clear, and adapted to different learning styles. You help break down complex topics into manageable parts.',
+    rootHash: undefined
   },
-  'financial-advisor': {
-    id: 'financial-advisor',
-    name: 'Financial Advisor',
-    description: 'Smart money management and investment guidance',
-    personality: 'analytical',
-    style: 'practical',
-    systemPrompt: 'You are a knowledgeable financial advisor who helps with budgeting, investing, and financial planning. Provide clear, responsible advice tailored to individual financial situations.'
+  'mindfulness-guide': {
+    id: 'mindfulness-guide',
+    name: 'Mindfulness Guide',
+    description: 'Meditation and mindfulness practice guidance',
+    personality: 'calm',
+    style: 'peaceful',
+    systemPrompt: 'You are a mindfulness guide who helps people develop meditation and mindfulness practices. Your responses are calm, peaceful, and designed to promote inner awareness and tranquility. You provide practical guidance for mindfulness techniques.',
+    rootHash: undefined
   }
 };
 
-// Cache for agent responses (simple in-memory cache)
-let agentCache: Map<string, any> = new Map();
+// Cached prompts from 0G Storage
+const promptCache = new Map<string, AIAgentPrompt>();
 
-// Get AI Agent configuration from environment
-export function getAIAgentConfig(env: EnvVars): AIAgentConfig {
-  if (!env.OPENAI_API_KEY) {
-    throw new Error('OPENAI_API_KEY environment variable is required');
+// Get available AI agents
+export const getAvailableAgents = async (): Promise<AIAgent[]> => {
+  try {
+    console.log('🔄 Getting available AI agents...');
+    
+    // Return the static agent configuration
+    const agents = Object.values(AI_AGENT_PERSONAS);
+    
+    console.log(`✅ Found ${agents.length} available agents`);
+    return agents;
+  } catch (error) {
+    console.error('❌ Error getting available agents:', error);
+    // Return empty array as fallback
+    return [];
   }
-  
-  return {
-    apiKey: env.OPENAI_API_KEY,
-    baseUrl: 'https://api.openai.com/v1',
-    model: env.OPENAI_MODEL || 'gpt-4o-mini',
-    maxTokens: parseInt(env.OPENAI_MAX_TOKENS || '1000'),
-    temperature: parseFloat(env.OPENAI_TEMPERATURE || '0.7'),
-  };
-}
-
-// Get available AI agents (mock implementation)
-export async function getAvailableAgents(): Promise<AIAgent[]> {
-  // Return static list of available agents
-  return Object.values(AI_AGENT_PERSONAS).map(agent => ({
-    ...agent,
-    previewUrl: undefined // Will be set by the API endpoint
-  }));
-}
+};
 
 // Get agent by ID
-export function getAgentById(agentId: string): AIAgent | null {
-  return AI_AGENT_PERSONAS[agentId] || null;
-}
-
-// Validate agent ID
-export function isValidAgentId(agentId: string): boolean {
-  return agentId in AI_AGENT_PERSONAS;
-}
-
-// Generate AI response (mock implementation)
-export async function generateAIResponse(
-  agentId: string,
-  message: string,
-  conversation: Array<{role: string; content: string}> = [],
-  config: AIAgentConfig
-): Promise<{
-  response: string;
-  tokenUsage: TokenUsage;
-  agentName: string;
-}> {
-  const agent = getAgentById(agentId);
-  if (!agent) {
-    throw new Error(`Agent with ID ${agentId} not found`);
+export const getAgentById = async (agentId: string): Promise<AIAgent | null> => {
+  try {
+    console.log(`🔄 Getting agent by ID: ${agentId}`);
+    
+    const agent = AI_AGENT_PERSONAS[agentId];
+    if (!agent) {
+      console.warn(`⚠️ Agent not found: ${agentId}`);
+      return null;
+    }
+    
+    console.log(`✅ Found agent: ${agent.name}`);
+    return agent;
+  } catch (error) {
+    console.error(`❌ Error getting agent ${agentId}:`, error);
+    return null;
   }
+};
 
-  // Mock AI response for now
-  // In a real implementation, you would call the OpenAI API here
-  const response = `[${agent.name}]: Thank you for your message: "${message}". This is a mock response. In a production environment, this would connect to the OpenAI API using the provided configuration.`;
-  
-  const tokenUsage: TokenUsage = {
-    promptTokens: Math.floor(message.length / 4),
-    completionTokens: Math.floor(response.length / 4),
-    totalTokens: Math.floor((message.length + response.length) / 4)
-  };
+// Get system prompt for an agent (with 0G Storage fallback)
+export const getAgentSystemPrompt = async (agentId: string): Promise<string> => {
+  try {
+    console.log(`🔄 Getting system prompt for agent: ${agentId}`);
+    
+    const agent = AI_AGENT_PERSONAS[agentId];
+    if (!agent) {
+      console.warn(`⚠️ Agent not found: ${agentId}`);
+      return 'You are a helpful AI assistant.';
+    }
+    
+    // If agent has a root hash, try to retrieve from 0G Storage
+    if (agent.rootHash) {
+      try {
+        console.log(`📥 Attempting to retrieve prompt from 0G Storage: ${agent.rootHash}`);
+        
+        // Try to load storage module dynamically
+        const storageModule = await import('@/lib/storage');
+        const storedPrompt = await storageModule.retrieveAgentPrompt(agent.rootHash);
+        
+        if (storedPrompt && storedPrompt.systemPrompt) {
+          console.log(`✅ Retrieved prompt from 0G Storage for agent: ${agentId}`);
+          return storedPrompt.systemPrompt;
+        }
+      } catch (storageError) {
+        console.warn(`⚠️ Failed to retrieve from 0G Storage, using fallback: ${storageError}`);
+      }
+    }
+    
+    // Use the default system prompt
+    console.log(`✅ Using default system prompt for agent: ${agentId}`);
+    return agent.systemPrompt || 'You are a helpful AI assistant.';
+  } catch (error) {
+    console.error(`❌ Error getting system prompt for ${agentId}:`, error);
+    return 'You are a helpful AI assistant.';
+  }
+};
 
-  return {
-    response,
-    tokenUsage,
-    agentName: agent.name
-  };
-}
+// Update agent root hash (for 0G Storage integration)
+export const updateAgentRootHash = async (agentId: string, rootHash: string): Promise<boolean> => {
+  try {
+    console.log(`🔄 Updating root hash for agent ${agentId}: ${rootHash}`);
+    
+    const agent = AI_AGENT_PERSONAS[agentId];
+    if (!agent) {
+      console.warn(`⚠️ Agent not found: ${agentId}`);
+      return false;
+    }
+    
+    // Update the root hash
+    agent.rootHash = rootHash;
+    
+    console.log(`✅ Updated root hash for agent: ${agentId}`);
+    return true;
+  } catch (error) {
+    console.error(`❌ Error updating root hash for ${agentId}:`, error);
+    return false;
+  }
+};
 
-// Get conversation context for an agent
-export function getAgentConversationContext(
+// Clear prompt cache
+export const clearPromptCache = (): void => {
+  promptCache.clear();
+  console.log('🗑️ Cleared prompt cache');
+};
+
+// Get agent configuration (removed - type mismatch)
+
+// Validate agent exists
+export const validateAgent = async (agentId: string): Promise<boolean> => {
+  try {
+    const agent = await getAgentById(agentId);
+    return agent !== null;
+  } catch (error) {
+    console.error(`❌ Error validating agent ${agentId}:`, error);
+    return false;
+  }
+};
+
+// Get all agent IDs
+export const getAgentIds = (): string[] => {
+  return Object.keys(AI_AGENT_PERSONAS);
+};
+
+// Get agents by personality type
+export const getAgentsByPersonality = async (personality: string): Promise<AIAgent[]> => {
+  try {
+    const allAgents = await getAvailableAgents();
+    return allAgents.filter(agent => agent.personality === personality);
+  } catch (error) {
+    console.error(`❌ Error getting agents by personality ${personality}:`, error);
+    return [];
+  }
+};
+
+// Get agents by style
+export const getAgentsByStyle = async (style: string): Promise<AIAgent[]> => {
+  try {
+    const allAgents = await getAvailableAgents();
+    return allAgents.filter(agent => agent.style === style);
+  } catch (error) {
+    console.error(`❌ Error getting agents by style ${style}:`, error);
+    return [];
+  }
+};
+
+// Search agents
+export const searchAgents = async (query: string): Promise<AIAgent[]> => {
+  try {
+    const allAgents = await getAvailableAgents();
+    const searchTerm = query.toLowerCase();
+    
+    return allAgents.filter(agent => 
+      agent.name.toLowerCase().includes(searchTerm) ||
+      agent.description.toLowerCase().includes(searchTerm) ||
+      agent.personality.toLowerCase().includes(searchTerm) ||
+      agent.style.toLowerCase().includes(searchTerm)
+    );
+  } catch (error) {
+    console.error(`❌ Error searching agents with query ${query}:`, error);
+    return [];
+  }
+};
+
+// Get conversation context for an agent with 0G Storage prompt
+export async function getAgentConversationContext(
   agentId: string,
   conversation: Array<{role: string; content: string}>
-): {
+): Promise<{
   systemPrompt: string;
   conversationLength: number;
   lastMessages: Array<{role: string; content: string}>;
-} {
-  const agent = getAgentById(agentId);
-  const systemPrompt = agent?.systemPrompt || 'You are a helpful AI assistant.';
-  
-  // Get last 10 messages for context
-  const lastMessages = conversation.slice(-10);
-  
-  return {
-    systemPrompt,
-    conversationLength: conversation.length,
-    lastMessages
-  };
-}
-
-// Cache management
-export function clearAIAgentCache(): void {
-  agentCache.clear();
-}
-
-export function getCachedResponse(key: string): any {
-  return agentCache.get(key);
-}
-
-export function setCachedResponse(key: string, value: any, ttlMinutes: number = 15): void {
-  // Simple TTL implementation
-  setTimeout(() => {
-    agentCache.delete(key);
-  }, ttlMinutes * 60 * 1000);
-  
-  agentCache.set(key, value);
+}> {
+  try {
+    // Get the system prompt from 0G Storage or fallback
+    const systemPrompt = await getAgentSystemPrompt(agentId);
+    
+    // Get last 10 messages for context
+    const lastMessages = conversation.slice(-10);
+    
+    return {
+      systemPrompt,
+      conversationLength: conversation.length,
+      lastMessages
+    };
+  } catch (error) {
+    console.error('Error getting conversation context:', error);
+    // Fallback to default prompt
+    const agent = await getAgentById(agentId);
+    const systemPrompt = agent?.systemPrompt || 'You are a helpful AI assistant.';
+    
+    return {
+      systemPrompt,
+      conversationLength: conversation.length,
+      lastMessages: conversation.slice(-10)
+    };
+  }
 }
 
 // Get agent statistics
@@ -231,30 +336,6 @@ export async function getAgentStatistics(
       popularAgents: []
     };
   }
-}
-
-// Search agents by criteria
-export function searchAgents(
-  query: string,
-  personality?: string,
-  style?: string
-): AIAgent[] {
-  const agents = Object.values(AI_AGENT_PERSONAS);
-  
-  return agents.filter(agent => {
-    // Text search
-    const matchesQuery = !query || 
-      agent.name.toLowerCase().includes(query.toLowerCase()) ||
-      agent.description.toLowerCase().includes(query.toLowerCase());
-    
-    // Personality filter
-    const matchesPersonality = !personality || agent.personality === personality;
-    
-    // Style filter
-    const matchesStyle = !style || agent.style === style;
-    
-    return matchesQuery && matchesPersonality && matchesStyle;
-  });
 }
 
 // Get agent capabilities

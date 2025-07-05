@@ -1,28 +1,22 @@
-// 0G Storage imports - conditional for browser compatibility
+// 0G Storage integration for AI Agent prompts
+'use client'
+
+// Conditional imports to prevent server-side issues
+let ethers: any = null
 let ZgFile: any = null
 let Indexer: any = null
-let ethers: any = null
 
-// Dynamically import 0G Storage SDK only when needed and in compatible environment
-const loadZGStorageSDK = async () => {
-  if (typeof window === 'undefined') {
-    // Server-side or Node.js environment
+// Dynamic imports for browser environment
+const loadDependencies = async () => {
+  if (typeof window !== 'undefined' && !ethers) {
     try {
-      const { ZgFile: ZgFileClass, Indexer: IndexerClass } = await import('@0glabs/0g-ts-sdk')
-      const ethersModule = await import('ethers')
-      return {
-        ZgFile: ZgFileClass,
-        Indexer: IndexerClass,
-        ethers: ethersModule
-      }
+      ethers = await import('ethers')
+      const zgSdk = await import('@0glabs/0g-ts-sdk')
+      ZgFile = zgSdk.ZgFile
+      Indexer = zgSdk.Indexer
     } catch (error) {
-      console.warn('0G Storage SDK not available in this environment:', error)
-      return null
+      console.warn('Failed to load 0G Storage dependencies:', error)
     }
-  } else {
-    // Browser environment - 0G Storage operations not supported
-    console.warn('0G Storage operations not supported in browser environment')
-    return null
   }
 }
 
@@ -30,10 +24,9 @@ const loadZGStorageSDK = async () => {
 const RPC_URL = 'https://evmrpc-testnet.0g.ai/'
 const INDEXER_RPC = 'https://indexer-storage-testnet-turbo.0g.ai'
 
-// Initialize 0G storage client
+// Initialize provider and indexer
 let indexer: any = null
 let provider: any = null
-let signer: any = null
 
 export interface AIAgentPrompt {
   agentId: string
@@ -47,6 +40,34 @@ export interface AIAgentPrompt {
   safetyRating: 'safe' | 'reviewed' | 'pending'
 }
 
+export interface StorageResult {
+  success: boolean
+  rootHash: string
+  txHash: string
+  agentId: string
+  version: string
+  storageUrl: string
+  createdAt: string
+}
+
+export interface StorageStatus {
+  serviceAvailable: boolean
+  networkStatus: 'connected' | 'disconnected' | 'error'
+  lastSync: string
+  statistics: {
+    totalStoredPrompts: number
+    totalAgents: number
+    storageUsed: string
+    availableSpace: string
+  }
+}
+
+export interface ValidationResult {
+  isValid: boolean
+  issues: string[]
+  safetyScore: number
+}
+
 export interface StoredPrompt {
   rootHash: string
   txHash: string
@@ -56,23 +77,23 @@ export interface StoredPrompt {
   verified: boolean
 }
 
-// Initialize 0G Storage client
-export const initializeZGStorage = async (privateKey?: string) => {
+// Initialize 0G Storage connection
+export const initializeZGStorage = async (): Promise<boolean> => {
   try {
-    const sdk = await loadZGStorageSDK()
-    if (!sdk) {
-      console.log('❌ 0G Storage not available in this environment')
+    await loadDependencies()
+    
+    if (!ethers || !Indexer) {
+      console.warn('0G Storage dependencies not available')
       return false
     }
-
-    const { Indexer: IndexerClass, ethers: ethersModule } = sdk
     
-    indexer = new IndexerClass(INDEXER_RPC)
-    provider = new ethersModule.JsonRpcProvider(RPC_URL)
+    console.log('🚀 Initializing 0G Storage connection...')
     
-    if (privateKey) {
-      signer = new ethersModule.Wallet(privateKey, provider)
-    }
+    // Initialize provider
+    provider = new ethers.JsonRpcProvider(RPC_URL)
+    
+    // Initialize indexer
+    indexer = new Indexer(INDEXER_RPC)
     
     console.log('✅ 0G Storage initialized successfully')
     return true
@@ -82,35 +103,62 @@ export const initializeZGStorage = async (privateKey?: string) => {
   }
 }
 
+// Check if 0G Storage is available
+export const checkZGStorageAvailability = async (): Promise<boolean> => {
+  try {
+    if (!indexer) {
+      const initialized = await initializeZGStorage()
+      if (!initialized) return false
+    }
+    
+    if (!indexer) {
+      return false
+    }
+    
+    // Test connection by trying to select nodes
+    const [nodes, err] = await indexer.selectNodes(1)
+    if (err !== null) {
+      console.error('0G Storage not available:', err)
+      return false
+    }
+    
+    return nodes.length > 0
+  } catch (error) {
+    console.error('Failed to check 0G Storage availability:', error)
+    return false
+  }
+}
+
 // Store AI agent system prompt on 0G Storage
 export const storeAgentPrompt = async (
   prompt: AIAgentPrompt, 
   privateKey: string
-): Promise<StoredPrompt> => {
-  const sdk = await loadZGStorageSDK()
-  if (!sdk) {
-    throw new Error('0G Storage not available in this environment. Server-side operations required.')
-  }
-
-  if (!indexer) {
-    throw new Error('0G Storage not initialized. Call initializeZGStorage() first.')
-  }
-
+): Promise<StorageResult> => {
   try {
-    const { ZgFile: ZgFileClass, ethers: ethersModule } = sdk
+    console.log(`📤 Storing prompt for agent: ${prompt.agentId}`)
     
-    // Create a temporary signer for this operation
-    const tempProvider = new ethersModule.JsonRpcProvider(RPC_URL)
-    const tempSigner = new ethersModule.Wallet(privateKey, tempProvider)
+    if (!indexer) {
+      const initialized = await initializeZGStorage()
+      if (!initialized) {
+        throw new Error('0G Storage not initialized')
+      }
+    }
+    
+    if (!provider || !indexer || !ethers || !ZgFile) {
+      throw new Error('0G Storage dependencies not available')
+    }
+    
+    // Create signer
+    const signer = new ethers.Wallet(privateKey, provider)
     
     // Convert prompt to JSON and create file
     const promptData = JSON.stringify(prompt, null, 2)
-    const promptBytes = new TextEncoder().encode(promptData)
     
-    // Create ZgFile from data
-    const file = await ZgFileClass.fromBytes(promptBytes, `agent-${prompt.agentId}-v${prompt.version}.json`)
+    // Create file handle for 0G Storage
+    const tempFile = await createTemporaryFile(promptData, `${prompt.agentId}-v${prompt.version}.json`)
+    const file = new ZgFile(tempFile)
     
-    // Generate Merkle tree for verification
+    // Generate Merkle tree
     const [tree, treeErr] = await file.merkleTree()
     if (treeErr !== null) {
       await file.close()
@@ -118,195 +166,209 @@ export const storeAgentPrompt = async (
     }
     
     const rootHash = tree?.rootHash()
-    if (!rootHash) {
-      await file.close()
-      throw new Error('Failed to generate root hash')
-    }
-    
-    console.log(`📄 Storing prompt for agent ${prompt.agentId}:`, {
-      rootHash,
-      size: promptBytes.length,
-      version: prompt.version
-    })
+    console.log(`📋 Generated root hash: ${rootHash}`)
     
     // Upload to 0G Storage
-    const [tx, uploadErr] = await indexer.upload(file, RPC_URL, tempSigner)
-    await file.close()
-    
+    const [tx, uploadErr] = await indexer.upload(file, RPC_URL, signer)
     if (uploadErr !== null) {
+      await file.close()
       throw new Error(`Upload error: ${uploadErr}`)
     }
     
-    console.log('✅ Agent prompt stored successfully!', {
-      agentId: prompt.agentId,
-      rootHash,
-      txHash: tx
-    })
+    console.log(`✅ Prompt stored successfully! TX: ${tx}`)
+    
+    // Clean up
+    await file.close()
     
     return {
-      rootHash,
-      txHash: tx,
+      success: true,
+      rootHash: rootHash || '',
+      txHash: tx || '',
       agentId: prompt.agentId,
       version: prompt.version,
-      uploadedAt: new Date().toISOString(),
-      verified: true
+      storageUrl: `${INDEXER_RPC}/file/${rootHash}`,
+      createdAt: new Date().toISOString()
     }
-    
   } catch (error) {
     console.error('❌ Failed to store agent prompt:', error)
     throw error
   }
 }
 
+// Helper function to create temporary file handle
+const createTemporaryFile = async (data: string, filename: string): Promise<any> => {
+  if (typeof window !== 'undefined') {
+    // Browser environment - create a file-like object
+    const blob = new Blob([data], { type: 'application/json' })
+    return {
+      name: filename,
+      size: blob.size,
+      type: blob.type,
+      arrayBuffer: () => blob.arrayBuffer(),
+      stream: () => blob.stream(),
+      text: () => blob.text()
+    }
+  } else {
+    // Node.js environment - create actual file
+    const fs = await import('fs')
+    const path = await import('path')
+    const os = await import('os')
+    
+    const tempPath = path.join(os.tmpdir(), filename)
+    await fs.promises.writeFile(tempPath, data)
+    
+    return {
+      name: filename,
+      path: tempPath,
+      size: Buffer.byteLength(data),
+      type: 'application/json'
+    }
+  }
+}
+
 // Retrieve AI agent system prompt from 0G Storage
 export const retrieveAgentPrompt = async (rootHash: string): Promise<AIAgentPrompt> => {
-  const sdk = await loadZGStorageSDK()
-  if (!sdk) {
-    throw new Error('0G Storage not available in this environment. Server-side operations required.')
-  }
-
-  if (!indexer) {
-    throw new Error('0G Storage not initialized. Call initializeZGStorage() first.')
-  }
-  
   try {
     console.log(`📥 Retrieving prompt with hash: ${rootHash}`)
     
-    // For browser environments, return mock data
-    if (typeof window !== 'undefined') {
-      // Mock prompt for demo purposes
-      const mockPrompt: AIAgentPrompt = {
-        agentId: 'demo-agent',
-        agentName: 'Demo Tutor',
-        systemPrompt: 'You are a demonstration AI tutor. This is mock data for browser environments.',
-        version: '1.0',
-        createdAt: new Date().toISOString(),
-        createdBy: 'demo-system',
-        educationalLevel: 'elementary',
-        subjects: ['demonstration'],
-        safetyRating: 'safe'
+    if (!indexer) {
+      const initialized = await initializeZGStorage()
+      if (!initialized) {
+        throw new Error('0G Storage not initialized')
       }
-      return mockPrompt
     }
     
-    // Server-side retrieval would go here
-    console.log('✅ Prompt retrieved successfully (mock data)')
-    
-    const mockPrompt: AIAgentPrompt = {
-      agentId: 'agent-001',
-      agentName: 'Math Tutor',
-      systemPrompt: 'You are a friendly AI math tutor for elementary students...',
-      version: '1.0',
-      createdAt: new Date().toISOString(),
-      createdBy: 'educational-team',
-      educationalLevel: 'elementary',
-      subjects: ['mathematics', 'basic-arithmetic'],
-      safetyRating: 'safe'
+    if (!indexer) {
+      throw new Error('0G Storage not initialized')
     }
     
-    return mockPrompt
-    
-  } catch (error) {
-    console.error('❌ Failed to retrieve agent prompt:', error)
-    throw error
-  }
-}
-
-// Verify prompt integrity by comparing hashes
-export const verifyPromptIntegrity = async (
-  prompt: AIAgentPrompt, 
-  expectedHash: string
-): Promise<boolean> => {
-  try {
-    const sdk = await loadZGStorageSDK()
-    if (!sdk) {
-      console.log('⚠️ 0G Storage not available - returning mock verification')
-      return true // Mock verification for browser environments
-    }
-
-    const { ZgFile: ZgFileClass } = sdk
-    
-    // Convert prompt to same format as stored
-    const promptData = JSON.stringify(prompt, null, 2)
-    const promptBytes = new TextEncoder().encode(promptData)
-    
-    // Create temporary file and calculate hash
-    const file = await ZgFileClass.fromBytes(promptBytes, 'temp-verify.json')
-    const [tree, treeErr] = await file.merkleTree()
-    await file.close()
-    
-    if (treeErr !== null) {
-      console.error('Error generating verification tree:', treeErr)
-      return false
+    // For browser environments, we need to handle downloads differently
+    if (typeof window !== 'undefined') {
+      // In browser, attempt to download file
+      try {
+        // Try to download the file content directly
+        const response = await fetch(`${INDEXER_RPC}/file/${rootHash}`)
+        if (!response.ok) {
+          throw new Error(`Failed to fetch file: ${response.status}`)
+        }
+        
+        const promptData = await response.text()
+        const prompt: AIAgentPrompt = JSON.parse(promptData)
+        
+        console.log(`✅ Prompt retrieved successfully for agent: ${prompt.agentId}`)
+        return prompt
+      } catch (fetchError) {
+        console.warn('Direct fetch failed, trying indexer download:', fetchError)
+        throw fetchError
+      }
     }
     
-    const calculatedHash = tree?.rootHash()
-    const isValid = calculatedHash === expectedHash
+    // Server-side download to temporary file
+    const tempPath = `/tmp/agent-prompt-${Date.now()}-${rootHash}.json`
     
-    console.log('🔍 Prompt verification:', {
-      expectedHash,
-      calculatedHash,
-      isValid
+    // Download from 0G Storage with proof verification
+    const downloadErr = await indexer.download(rootHash, tempPath, true)
+    if (downloadErr !== null) {
+      throw new Error(`Download error: ${downloadErr}`)
+    }
+    
+    // Read the downloaded file
+    const fs = await import('fs')
+    const promptData = await fs.promises.readFile(tempPath, 'utf-8')
+    const prompt: AIAgentPrompt = JSON.parse(promptData)
+    
+    // Clean up temporary file
+    await fs.promises.unlink(tempPath).catch(() => {
+      // Ignore cleanup errors
     })
     
-    return isValid
-    
+    console.log(`✅ Prompt retrieved successfully for agent: ${prompt.agentId}`)
+    return prompt
   } catch (error) {
-    console.error('❌ Failed to verify prompt integrity:', error)
-    return false
-  }
-}
-
-// Get all stored prompts for an agent (from your database)
-export const getAgentPromptHistory = async (agentId: string): Promise<StoredPrompt[]> => {
-  // This would query your database for all stored prompt versions
-  // For now, return mock data
-  return [
-    {
-      rootHash: '0x1234...abcd',
-      txHash: '0x5678...efgh',
-      agentId,
+    console.error('❌ Failed to retrieve agent prompt:', error)
+    
+    // Return fallback prompt if retrieval fails
+    console.log('🔄 Returning fallback prompt due to retrieval failure')
+    return {
+      agentId: 'fallback-agent',
+      agentName: 'Fallback Agent',
+      systemPrompt: 'You are a helpful AI assistant. This is a fallback prompt used when the original prompt cannot be retrieved from 0G Storage.',
       version: '1.0',
-      uploadedAt: new Date().toISOString(),
-      verified: true
+      createdAt: new Date().toISOString(),
+      createdBy: 'system-fallback',
+      educationalLevel: 'elementary',
+      subjects: ['general'],
+      safetyRating: 'safe'
     }
-  ]
+  }
 }
 
-// Educational safety verification (browser-compatible)
-export const validateEducationalContent = (prompt: AIAgentPrompt): {
-  isValid: boolean
-  issues: string[]
-} => {
-  const issues: string[] = []
-  
-  // Check for age-appropriate content
-  const inappropriateTerms = ['adult', 'violence', 'inappropriate']
-  const hasInappropriateContent = inappropriateTerms.some(term => 
-    prompt.systemPrompt.toLowerCase().includes(term)
-  )
-  
-  if (hasInappropriateContent) {
-    issues.push('Contains potentially inappropriate content for educational use')
+// Get storage status and statistics
+export const getStorageStatus = async (): Promise<StorageStatus> => {
+  try {
+    const isAvailable = await checkZGStorageAvailability()
+    
+    return {
+      serviceAvailable: isAvailable,
+      networkStatus: isAvailable ? 'connected' : 'disconnected',
+      lastSync: new Date().toISOString(),
+      statistics: {
+        totalStoredPrompts: 0, // This would need to be tracked separately
+        totalAgents: 6, // Based on the current AI_AGENT_PERSONAS
+        storageUsed: '0 MB',
+        availableSpace: 'Unlimited'
+      }
+    }
+  } catch (error) {
+    console.error('Failed to get storage status:', error)
+    return {
+      serviceAvailable: false,
+      networkStatus: 'error',
+      lastSync: new Date().toISOString(),
+      statistics: {
+        totalStoredPrompts: 0,
+        totalAgents: 0,
+        storageUsed: '0 MB',
+        availableSpace: 'Unknown'
+      }
+    }
   }
-  
-  // Check for educational focus
-  const educationalTerms = ['learn', 'teach', 'student', 'education', 'knowledge']
-  const hasEducationalFocus = educationalTerms.some(term =>
-    prompt.systemPrompt.toLowerCase().includes(term)
-  )
-  
-  if (!hasEducationalFocus) {
-    issues.push('Lacks clear educational focus')
-  }
-  
-  // Check safety rating
-  if (prompt.safetyRating === 'pending') {
-    issues.push('Safety rating pending review')
-  }
-  
+}
+
+// Generate a test prompt for a given agent
+export const generateTestPrompt = async (agentId: string): Promise<AIAgentPrompt> => {
   return {
-    isValid: issues.length === 0,
-    issues
+    agentId,
+    agentName: `Test Agent ${agentId}`,
+    systemPrompt: `You are a test AI agent (${agentId}) designed for educational purposes. This is a sample prompt for testing the 0G Storage integration. You should provide helpful, safe, and educational responses appropriate for your target audience.`,
+    version: '1.0',
+    createdAt: new Date().toISOString(),
+    createdBy: 'test-system',
+    educationalLevel: 'elementary',
+    subjects: ['testing', 'demonstration'],
+    safetyRating: 'safe'
   }
-} 
+}
+
+// Simplified functions for basic usage without full 0G Storage integration
+export const createFallbackPrompt = (agentId: string): AIAgentPrompt => {
+  return {
+    agentId,
+    agentName: `${agentId} Agent`,
+    systemPrompt: `You are a helpful AI assistant for ${agentId}. Provide educational and helpful responses.`,
+    version: '1.0',
+    createdAt: new Date().toISOString(),
+    createdBy: 'system-fallback',
+    educationalLevel: 'elementary',
+    subjects: ['general'],
+    safetyRating: 'safe'
+  }
+}
+
+// Simple storage check that doesn't require full initialization
+export const isStorageAvailable = (): boolean => {
+  return typeof window !== 'undefined' && !!ethers && !!ZgFile && !!Indexer
+}
+
+// Initialize storage on first use
+loadDependencies().catch(console.warn)

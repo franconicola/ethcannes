@@ -25,12 +25,14 @@ interface UseAvatarPaginationReturn {
 export function useAvatarPagination(options: UseAvatarPaginationOptions = {}): UseAvatarPaginationReturn {
   const { initialPage = 1, initialLimit = 12 } = options
 
-  // Use ref to stabilize initialLimit and prevent infinite loops
+  // Initialize refs with stable values - no conditional updates
   const limitRef = useRef(initialLimit)
+  const hasInitialized = useRef(false)
   
-  // Only update ref if the value actually changes
-  if (limitRef.current !== initialLimit) {
+  // Only set the ref once on mount
+  if (!hasInitialized.current) {
     limitRef.current = initialLimit
+    hasInitialized.current = true
   }
 
   // State
@@ -41,70 +43,93 @@ export function useAvatarPagination(options: UseAvatarPaginationOptions = {}): U
   const [currentPage, setCurrentPage] = useState(initialPage)
   const [triggerReload, setTriggerReload] = useState(0)
 
-  // Single effect to handle all loading - only depend on stable values
+  // Stable load function
+  const loadAvatars = useCallback(async (page: number, limit: number, signal: AbortSignal) => {
+    console.log('🔄 Loading avatars:', { page, limit })
+
+    // Build API URL - use relative URL to avoid hostname issues
+    const params = new URLSearchParams()
+    params.set('page', page.toString())
+    params.set('limit', limit.toString())
+    
+    const finalUrl = `/api/agents/public?${params.toString()}`
+    console.log(`🔄 Trying API at: ${finalUrl}`)
+
+    try {
+      // Use minimal fetch options that work (no Content-Type header for GET requests)
+      const response = await fetch(finalUrl, {
+        method: 'GET',
+        signal,
+        // Only include Accept header, not Content-Type (which causes redirects)
+        headers: {
+          'Accept': 'application/json'
+        },
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error(`❌ API returned ${response.status}: ${errorText}`)
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+
+      const data = await response.json()
+
+      if (data.success && data.data && Array.isArray(data.data.agents)) {
+        setAvatars(data.data.agents)
+        setPagination(data.data.pagination || { 
+          page: page, 
+          totalPages: Math.ceil(data.data.agents.length / limit), 
+          totalItems: data.data.agents.length 
+        })
+        console.log(`✅ Loaded ${data.data.agents.length} avatars`)
+        setError(null) // Clear any previous errors
+      } else {
+        throw new Error(data.error || 'Invalid response format')
+      }
+    } catch (err) {
+      if (err.name !== 'AbortError') {
+        console.error('❌ Failed to load avatars:', err)
+        throw err
+      }
+    }
+  }, [])
+
+  // Single effect with proper cleanup and debouncing
   useEffect(() => {
     const controller = new AbortController()
-    
-    const loadAvatars = async () => {
+    let timeoutId: NodeJS.Timeout
+
+    const performLoad = async () => {
       setLoading(true)
       setError(null)
       
-      console.log('🔄 Loading avatars:', { page: currentPage, limit: limitRef.current })
-
-      // Build API URL directly to avoid circular dependencies
-      const params = new URLSearchParams()
-      params.set('page', currentPage.toString())
-      params.set('limit', limitRef.current.toString())
-      
-      const primaryApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api'
-      const finalUrl = `${primaryApiUrl}/agents/public?${params.toString()}`
-      console.log(`🔄 Trying API at: ${finalUrl}`)
-
       try {
-        const response = await fetch(finalUrl, {
-          signal: controller.signal,
-          headers: {
-            Accept: 'application/json',
-            'Content-Type': 'application/json',
-          },
-        })
-
-        if (!response.ok) {
-          const errorText = await response.text()
-          console.error(`❌ API ${primaryApiUrl} returned ${response.status}: ${errorText}`)
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-        }
-
-        const data = await response.json()
-
-        if (data.success && data.data && Array.isArray(data.data.agents)) {
-          setAvatars(data.data.agents)
-          setPagination(data.data.pagination || { page: 1, totalPages: 1, totalItems: data.data.agents.length })
-          console.log(`✅ Loaded ${data.data.agents.length} avatars`)
-        } else {
-          throw new Error(data.error || 'Invalid response format')
-        }
+        await loadAvatars(currentPage, limitRef.current, controller.signal)
       } catch (err) {
         if (err.name !== 'AbortError') {
-          console.error('❌ Failed to load avatars:', err)
           setError(err.message)
           setAvatars([])
           setPagination(null)
         }
       } finally {
-        setLoading(false)
+        if (!controller.signal.aborted) {
+          setLoading(false)
+        }
       }
     }
 
-    loadAvatars()
+    // Add a small delay to prevent rapid successive calls
+    timeoutId = setTimeout(performLoad, 100)
 
     return () => {
       controller.abort()
+      clearTimeout(timeoutId)
     }
-  }, [currentPage, triggerReload]) // Only depend on currentPage and triggerReload
+  }, [currentPage, triggerReload, loadAvatars])
 
   // Actions
   const setPage = useCallback((page: number) => {
+    console.log('📄 Setting page to:', page)
     setCurrentPage(page)
   }, [])
 
@@ -113,6 +138,7 @@ export function useAvatarPagination(options: UseAvatarPaginationOptions = {}): U
   }, [])
 
   const reload = useCallback(() => {
+    console.log('🔄 Reloading avatars...')
     setTriggerReload(prev => prev + 1)
   }, [])
 

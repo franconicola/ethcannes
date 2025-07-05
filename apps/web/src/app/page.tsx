@@ -18,7 +18,7 @@ export default function HomePage() {
     createSession,
   } = useSession()
 
-  // Avatar pagination hook
+  // Avatar pagination hook - RE-ENABLED with fixed headers
   const {
     avatars,
     pagination,

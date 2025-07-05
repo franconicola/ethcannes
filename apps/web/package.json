@@ -90,7 +90,7 @@
     "client-only": "^0.0.1",
     "clsx": "^2.1.1",
     "cors": "^2.8.5",
-    "ethers": "^6.13.1",
+    "ethers": "^6.15.0",
     "helmet": "^7.1.0",
     "jose": "^6.0.11",
     "jsonwebtoken": "^9.0.2",
