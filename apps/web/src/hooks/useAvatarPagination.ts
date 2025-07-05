@@ -64,107 +64,71 @@ export function useAvatarPagination(options: UseAvatarPaginationOptions = {}): U
       params.set('style', filters.style)
     }
     
-    return `${apiUrl}/avatars/public?${params.toString()}`
+    return `${apiUrl}/agents/public?${params.toString()}`
   }, [apiUrl, currentPage, initialLimit, filters.search, filters.gender, filters.style])
 
-  // Load avatars from API
-  const loadAvatars = useCallback(async () => {
+  const loadAvatars = useCallback(async (signal: AbortSignal) => {
+    setLoading(true);
+    setError(null);
+    const attemptedUrls: string[] = [];
+
+    console.log('🔄 Loading avatars:', {
+      page: currentPage,
+      limit: initialLimit,
+      filters: { search: filters.search, gender: filters.gender, style: filters.style }
+    });
+
+    const primaryApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+    const finalUrl = buildApiUrl().replace(apiUrl, primaryApiUrl);
+    attemptedUrls.push(finalUrl);
+    console.log(`🔄 Trying API at: ${finalUrl}`);
+    
     try {
-      setLoading(true)
-      setError(null)
-      
-      console.log('🔄 Loading avatars:', {
-        page: currentPage,
-        limit: initialLimit,
-        filters: { search: filters.search, gender: filters.gender, style: filters.style }
-      })
+      const response = await fetch(finalUrl, {
+        signal,
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+      });
 
-      const url = buildApiUrl()
-      
-      // Enhanced API fallback logic with better error handling
-      const primaryApiUrl = process.env.NEXT_PUBLIC_API_URL || 
-        (process.env.NODE_ENV === 'production' 
-          ? 'https://sparkmind-api.workers.dev/api'
-          : 'http://localhost:8787/api')
-      
-      const fallbackUrls = process.env.NODE_ENV === 'development' ? [
-        "http://localhost:8787/api",
-        "http://localhost:3000/api"
-      ] : ["https://sparkmind-api.workers.dev/api"]
-      
-      const apiUrls = [primaryApiUrl, ...fallbackUrls]
-      
-      let response: Response | undefined
-      let lastError: Error | undefined
-      let attemptedUrls: string[] = []
-      
-      for (const baseUrl of apiUrls) {
-        try {
-          const fullUrl = url.replace(apiUrl, baseUrl)
-          attemptedUrls.push(fullUrl)
-          console.log(`🔄 Trying API at: ${fullUrl}`)
-          
-          response = await fetch(fullUrl, {
-            headers: {
-              'Accept': 'application/json',
-              'Content-Type': 'application/json',
-            },
-            signal: AbortSignal.timeout(15000)
-          })
-          
-          if (response.ok) {
-            console.log(`✅ API responded from: ${baseUrl}`)
-            break
-          } else {
-            console.log(`❌ API ${baseUrl} returned ${response.status}: ${response.statusText}`)
-            lastError = new Error(`HTTP ${response.status}: ${response.statusText}`)
-          }
-        } catch (err) {
-          console.log(`❌ Failed to connect to: ${baseUrl}`, err)
-          lastError = err as Error
-        }
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`❌ API ${primaryApiUrl} returned ${response.status}: ${errorText}`);
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
-      if (!response || !response.ok) {
-        const errorMessage = lastError?.message || 'Unable to connect to avatar service'
-        console.error('❌ All API attempts failed:', attemptedUrls)
-        throw new Error(`${errorMessage}. Tried: ${attemptedUrls.join(', ')}`)
-      }
+      const data = await response.json();
 
-      const data: any = await response.json()
-      
-      if (data.success && Array.isArray(data.avatars)) {
-        setAvatars(data.avatars)
-        setPagination(data.pagination || { page: 1, totalPages: 1, totalItems: data.avatars.length })
-        setFilterOptions(data.filterOptions || { genders: [], styles: [] })
-        
-        console.log(`✅ Loaded ${data.avatars.length} avatars (page ${data.pagination?.page || 1}/${data.pagination?.totalPages || 1})`)
-        
-        // If no avatars loaded, show a helpful message
-        if (data.avatars.length === 0) {
-          console.log('ℹ️ No avatars found with current filters')
-        }
+      if (data.success && Array.isArray(data.agents)) {
+        setAvatars(data.agents);
+        setPagination(data.pagination || { page: 1, totalPages: 1, totalItems: data.agents.length });
+        setFilterOptions(data.filterOptions || { genders: [], styles: [] });
+        console.log(`✅ Loaded ${data.agents.length} avatars`);
       } else {
-        console.error('❌ Invalid response format:', data)
-        throw new Error(data.error || data.message || 'Invalid response format from avatar service')
+        throw new Error(data.error || 'Invalid response format');
       }
-      
     } catch (err) {
-      console.error('❌ Failed to load avatars:', err)
-      const errorMessage = err instanceof Error ? err.message : 'Failed to load avatars'
-      setError(errorMessage)
-      setAvatars([])
-      setPagination(null)
-      setFilterOptions({ genders: [], styles: [] })
+      if (err.name !== 'AbortError') {
+        console.error('❌ Failed to load avatars:', err);
+        setError(err.message);
+        setAvatars([]);
+        setPagination(null);
+        setFilterOptions({ genders: [], styles: [] });
+      }
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [buildApiUrl, currentPage, initialLimit, filters.search, filters.gender, filters.style, apiUrl])
+  }, [buildApiUrl, apiUrl, currentPage, initialLimit, filters.search, filters.gender, filters.style]);
 
-  // Load avatars when dependencies change
   useEffect(() => {
-    loadAvatars()
-  }, [loadAvatars])
+    const controller = new AbortController();
+    loadAvatars(controller.signal);
+
+    return () => {
+      controller.abort();
+    };
+  }, [loadAvatars]);
 
   const isInitialLoad = useRef(true)
   useEffect(() => {
@@ -184,6 +148,7 @@ export function useAvatarPagination(options: UseAvatarPaginationOptions = {}): U
   }, [])
 
   const setFilters = useCallback((newFilters: Partial<AvatarFilters>) => {
+    setCurrentPage(1); // Reset page to 1 on filter change
     setFiltersState(prev => ({ ...prev, ...newFilters }))
   }, [])
 
@@ -192,7 +157,8 @@ export function useAvatarPagination(options: UseAvatarPaginationOptions = {}): U
   }, [])
 
   const reload = useCallback(() => {
-    loadAvatars()
+    const controller = new AbortController();
+    loadAvatars(controller.signal);
   }, [loadAvatars])
 
   return {

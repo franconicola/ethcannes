@@ -7,7 +7,7 @@ import { getAgentStatus, getPublicAgents } from './routes/avatarRoutes.js';
 import { getPrompt, getStorageStatus, getTestPrompt, storePrompt, validatePrompt, verifyPrompt } from './routes/zgStorageRoutes.js';
 import { validatePrivyToken } from './services/authService.js';
 import { getOrCreateAnonymousSession } from './services/sessionService.js';
-import { corsHeaders, handleCORS } from './utils/cors.js';
+import { handleCORS, jsonWithCors } from './utils/cors.js';
 
 export async function handleRequest(request, env) {
   // Handle CORS
@@ -24,20 +24,17 @@ export async function handleRequest(request, env) {
   try {
     // Health check - early return without initializing services
     if (cleanPath === '/health') {
-      return new Response(JSON.stringify({
+      return jsonWithCors({
         status: 'OK',
         timestamp: new Date().toISOString(),
         version: '1.0.0',
         environment: env.NODE_ENV || 'production'
-      }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json', ...corsHeaders },
       });
     }
 
     // Debug endpoint - check environment variables without initializing heavy services
     if (cleanPath === '/debug' && method === 'GET') {
-      return new Response(JSON.stringify({
+      return jsonWithCors({
         status: 'OK',
         timestamp: new Date().toISOString(),
         environment: env.NODE_ENV || 'unknown',
@@ -48,9 +45,6 @@ export async function handleRequest(request, env) {
         path: cleanPath,
         method: method,
         note: 'Using Prisma with edge compatibility and AI Agents'
-      }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json', ...corsHeaders },
       });
     }
 
@@ -63,12 +57,9 @@ export async function handleRequest(request, env) {
     if (cleanPath === '/agents/cache' && method === 'DELETE') {
       const { clearAIAgentCache } = await import('./services/aiAgentService.js');
       clearAIAgentCache();
-      return new Response(JSON.stringify({
+      return jsonWithCors({
         success: true,
         message: 'AI agent cache cleared successfully'
-      }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json', ...corsHeaders },
       });
     }
 
@@ -79,7 +70,7 @@ export async function handleRequest(request, env) {
         
         const availableAgents = Object.keys(AI_AGENT_PERSONAS);
         
-        return new Response(JSON.stringify({
+        return jsonWithCors({
           success: true,
           config: {
             model: config.model,
@@ -90,18 +81,12 @@ export async function handleRequest(request, env) {
           sample_agent: AI_AGENT_PERSONAS[availableAgents[0]] || null,
           total_agents: availableAgents.length,
           available_agents: availableAgents.slice(0, 3),
-        }, null, 2), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json', ...corsHeaders },
         });
       } catch (error) {
-        return new Response(JSON.stringify({
+        return jsonWithCors({
           success: false,
           error: error.message
-        }), {
-          status: 500,
-          headers: { 'Content-Type': 'application/json', ...corsHeaders },
-        });
+        }, 500);
       }
     }
 
@@ -179,7 +164,7 @@ export async function handleRequest(request, env) {
       return await getConversationHistory(request, env, authInfo, anonymousSession, prisma, sessionId);
     }
 
-    return new Response(JSON.stringify({
+    return jsonWithCors({
       error: "Not Found",
       message: "The requested endpoint does not exist",
       availableEndpoints: [
@@ -205,20 +190,14 @@ export async function handleRequest(request, env) {
         personality: "Filter by personality (professional, creative, analytical, etc.)",
         style: "Filter by style"
       }
-    }), {
-      status: 404,
-      headers: { 'Content-Type': 'application/json', ...corsHeaders },
-    });
+    }, 404);
 
   } catch (error) {
-    console.error('Unhandled error:', error);
-    return new Response(JSON.stringify({
-      success: false,
-      error: 'Internal server error',
-      message: error.message
-    }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json', ...corsHeaders },
-    });
+    console.error('API Error:', error);
+    return jsonWithCors({
+      error: 'Internal Server Error',
+      message: error.message,
+      stack: env.NODE_ENV === 'development' ? error.stack : undefined,
+    }, 500);
   }
 } 

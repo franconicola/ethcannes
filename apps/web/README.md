@@ -45,7 +45,7 @@ Add your environment variables:
 ```env
 NEXT_PUBLIC_PRIVY_APP_ID=your_privy_app_id
 NEXT_PUBLIC_PRIVY_CLIENT_ID=your_privy_client_id
-NEXT_PUBLIC_API_URL=http://localhost:8787/api
+NEXT_PUBLIC_API_URL=http://localhost:3001/api
 ```
 
 3. Run the development server:

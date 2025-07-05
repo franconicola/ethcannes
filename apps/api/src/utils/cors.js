@@ -15,4 +15,15 @@ export function handleCORS(request) {
     });
   }
   return null;
+}
+
+// Helper to create a JSON response with CORS headers
+export function jsonWithCors(data, status = 200) {
+  return new Response(JSON.stringify(data, null, 2), {
+    status,
+    headers: {
+      'Content-Type': 'application/json',
+      ...corsHeaders,
+    },
+  });
 } 

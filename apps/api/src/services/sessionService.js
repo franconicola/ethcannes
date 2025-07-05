@@ -65,7 +65,7 @@ export async function checkUsageLimits(authInfo, anonymousSession, prisma) {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       
-      const todaySessionsCount = await prisma.avatarSession.count({
+      const todaySessionsCount = await prisma.agentSession.count({
         where: {
           userId: authInfo.user.id,
           createdAt: {
@@ -94,7 +94,7 @@ export async function cleanupInactiveSessions(prisma, env) {
     const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000); // 10 minutes ago
     
     // Find sessions that haven't been used in the last 10 minutes
-    const inactiveSessions = await prisma.avatarSession.findMany({
+    const inactiveSessions = await prisma.agentSession.findMany({
       where: {
         status: 'ACTIVE',
         lastUsed: {
@@ -112,7 +112,7 @@ export async function cleanupInactiveSessions(prisma, env) {
       console.log(`🔒 Cleaned up AI agent session: ${session.id}`);
 
         // Update database status
-        await prisma.avatarSession.update({
+        await prisma.agentSession.update({
           where: { id: session.id },
           data: {
             status: 'ENDED',
@@ -137,7 +137,7 @@ export async function cleanupInactiveSessions(prisma, env) {
 // Update session last used timestamp
 export async function updateSessionActivity(sessionId, prisma) {
   try {
-    await prisma.avatarSession.update({
+    await prisma.agentSession.update({
       where: { id: sessionId },
       data: { lastUsed: new Date() }
     });

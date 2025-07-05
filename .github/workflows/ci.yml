@@ -372,10 +372,10 @@ jobs:
           echo "🧪 Running integration tests..."
           
           # Test API health endpoint
-          curl -f http://localhost:8787/health || echo "❌ API health check failed"
+          curl -f http://localhost:3001/health || echo "❌ API health check failed"
           
           # Test basic API endpoints
-          curl -f http://localhost:8787/api/users || echo "ℹ️ Users endpoint test"
+          curl -f http://localhost:3001/api/users || echo "ℹ️ Users endpoint test"
           
           echo "✅ Integration tests completed"
         continue-on-error: true

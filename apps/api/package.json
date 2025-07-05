@@ -7,7 +7,7 @@
   "scripts": {
     "build": "npm run env -- npx prisma generate",
     "build:worker": "npm run env -- npx prisma generate && cp src/worker.js dist/ || mkdir -p dist && cp src/worker.js dist/",
-    "dev": "wrangler dev",
+    "dev": "wrangler dev --env development",
     "deploy": "wrangler deploy",
     "deploy:cf": "wrangler deploy src/worker.js",
     "deploy:cf:dev": "wrangler deploy src/worker.js --env development",

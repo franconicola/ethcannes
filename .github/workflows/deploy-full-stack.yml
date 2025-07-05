@@ -279,8 +279,18 @@ jobs:
                 console.log('👥 User table accessible, count:', userCount);
                 
                 // Test other critical tables
-                const sessionCount = await prisma.avatarSession.count().catch(() => 0);
-                console.log('🔗 AvatarSession table accessible, count:', sessionCount);
+                const sessionCount = await prisma.agentSession.count().catch(() => 0);
+                console.log('🔗 AgentSession table accessible, count:', sessionCount);
+                
+                const anonymousSessionCount = await prisma.anonymousSession.count().catch(() => 0);
+                console.log('👤 AnonymousSession table accessible, count:', anonymousSessionCount);
+                
+                const chatMessageCount = await prisma.chatMessage.count().catch(() => 0);
+                console.log('💬 ChatMessage table accessible, count:', chatMessageCount);
+                
+                // Test new 0G Storage tables
+                const agentPromptCount = await prisma.agentPrompt.count().catch(() => 0);
+                console.log('📝 AgentPrompt table accessible, count:', agentPromptCount);
                 
                 await prisma.\$disconnect();
                 console.log('✅ Database schema verification passed');

@@ -1,5 +1,5 @@
 import { getAvailableAgents } from '../services/aiAgentService.js';
-import { corsHeaders } from '../utils/cors.js';
+import { jsonWithCors } from '../utils/cors.js';
 
 // Helper function to parse pagination parameters
 function parsePaginationParams(url) {
@@ -107,9 +107,22 @@ export async function getPublicAgents(request, env, authInfo, anonymousSession, 
       totalPages: pagination.totalPages
     });
 
-    return new Response(JSON.stringify({
+    // --- New GIF Logic ---
+    const availableGifs = ['mouse.gif']; // Add more GIF filenames here
+    const getGifUrl = (filename) => {
+      const baseUrl = new URL(request.url).origin;
+      return `${baseUrl}/gifs/${filename}`;
+    };
+
+    const agentsWithGifs = paginatedAgents.map(agent => ({
+      ...agent,
+      previewUrl: getGifUrl(availableGifs[Math.floor(Math.random() * availableGifs.length)]),
+    }));
+    // --- End GIF Logic ---
+
+    return jsonWithCors({
       success: true,
-      agents: paginatedAgents, // Changed from avatars to agents
+      agents: agentsWithGifs, // Use agents with GIFs
       pagination,
       filters: {
         search: search || null,
@@ -118,21 +131,15 @@ export async function getPublicAgents(request, env, authInfo, anonymousSession, 
       },
       filterOptions,
       source: 'ai_agent_service'
-    }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json', ...corsHeaders },
     });
     
   } catch (error) {
     console.error('Failed to fetch AI agents:', error);
-    return new Response(JSON.stringify({
+    return jsonWithCors({
       success: false,
       error: 'Failed to fetch AI agents',
       message: error.message
-    }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json', ...corsHeaders },
-    });
+    }, 500);
   }
 }
 
@@ -189,7 +196,7 @@ export async function getAgentStatus(request, env, authInfo, anonymousSession, p
       systemStats,
     });
 
-    return new Response(JSON.stringify({
+    return jsonWithCors({
       success: true,
       status: {
         isAuthenticated: authInfo.isAuthenticated,
@@ -198,20 +205,14 @@ export async function getAgentStatus(request, env, authInfo, anonymousSession, p
         systemStats,
         freeMessagesRemaining: anonymousSession ? Math.max(0, 5 - (anonymousSession.freeMessagesUsed || 0)) : null,
       }
-    }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json', ...corsHeaders },
     });
 
   } catch (error) {
     console.error('Failed to get AI agent status:', error);
-    return new Response(JSON.stringify({
+    return jsonWithCors({
       success: false,
-      error: 'Failed to get AI agent status',
-      message: error.message
-    }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json', ...corsHeaders },
-    });
+      error: 'Failed to get agent status',
+      message: error.message,
+    }, 500);
   }
 } 
