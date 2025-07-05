@@ -8,6 +8,9 @@ import { useSession } from '@/contexts/SessionContext';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
+// Edge Runtime configuration for Cloudflare Pages
+export const runtime = 'edge';
+
 interface Avatar {
   id: string
   name: string

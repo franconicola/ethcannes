@@ -8,6 +8,7 @@ import Image from 'next/image'
 import { useState } from 'react'
 import { VideoPreview } from '../video/Preview'
 import type { AvatarCardProps } from './types'
+import { VerificationBadge } from './VerificationBadge'
 
 export function AvatarCard({ 
   avatar, 
@@ -103,15 +104,41 @@ export function AvatarCard({
       </div>
       
       <CardContent className="p-3 lg:p-4">
-        <CardTitle className="text-sm mb-2 flex items-center gap-2">
-          {avatar.name}
-          {isCurrentlyLoading && (
-            <div className="w-3 h-3 bg-primary rounded-full animate-pulse" />
-          )}
+        <CardTitle className="text-sm mb-2 flex items-center gap-2 justify-between">
+          <span>{avatar.name}</span>
+          <div className="flex items-center gap-1">
+            {isCurrentlyLoading && (
+              <div className="w-3 h-3 bg-primary rounded-full animate-pulse" />
+            )}
+            <VerificationBadge avatar={avatar} />
+          </div>
         </CardTitle>
+        
         <p className="text-xs text-muted-foreground line-clamp-2 mb-3">
           {avatar.description || 'AI-powered avatar ready to chat'}
         </p>
+        
+        {/* Educational Level and Subjects */}
+        {(avatar.educationalLevel || avatar.subjects) && (
+          <div className="mb-3 space-y-1">
+            {avatar.educationalLevel && (
+              <Badge variant="outline" className="text-xs mr-1">
+                {avatar.educationalLevel}
+              </Badge>
+            )}
+            {avatar.subjects && avatar.subjects.slice(0, 2).map((subject) => (
+              <Badge key={subject} variant="secondary" className="text-xs mr-1">
+                {subject}
+              </Badge>
+            ))}
+            {avatar.subjects && avatar.subjects.length > 2 && (
+              <Badge variant="secondary" className="text-xs">
+                +{avatar.subjects.length - 2} more
+              </Badge>
+            )}
+          </div>
+        )}
+        
         {loading && (
           <Badge variant="secondary" className="text-xs">
             Starting...

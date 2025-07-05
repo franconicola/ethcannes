@@ -123,6 +123,16 @@ export function Navigation() {
           </div>
           
           <div className="flex items-center space-x-2 lg:space-x-4">
+            {/* Admin Link - Only for authenticated users */}
+            {isAuthenticated && (
+              <Link 
+                href="/admin" 
+                className="text-sm font-medium hover:underline underline-offset-4"
+              >
+                Admin
+              </Link>
+            )}
+            
             <ThemeToggle />
             {!isAuthenticated ? (
               <Button onClick={login} size="sm" className="text-xs lg:text-sm gap-2">

@@ -6,6 +6,13 @@ export interface Avatar {
   preview_video?: string
   gender?: string
   style?: string
+  // 0G Storage integration for AI tutors
+  promptHash?: string  // 0G Storage root hash for system prompt
+  promptVersion?: string  // Version of the stored prompt
+  educationalLevel?: 'elementary' | 'middle' | 'high' | 'adult'
+  subjects?: string[]
+  safetyRating?: 'safe' | 'reviewed' | 'pending'
+  verifiedAt?: string  // Last verification timestamp
 }
 
 export interface PaginationMeta {
@@ -23,11 +30,15 @@ export interface AvatarFilters {
   search: string | null
   gender: string | null
   style: string | null
+  educationalLevel?: string | null
+  safetyRating?: string | null
 }
 
 export interface FilterOptions {
   genders: string[]
   styles: string[]
+  educationalLevels?: string[]
+  safetyRatings?: string[]
 }
 
 export interface AvatarResponse {
@@ -43,8 +54,8 @@ export interface AvatarCardProps {
   avatar: Avatar
   loading: boolean
   hasReachedFreeLimit: boolean
-  sessionLoading?: boolean
-  selectedAvatarId?: string | null
+  sessionLoading: boolean
+  selectedAvatarId: string | null
   onStartChat: (avatarId: string) => void
 }
 
@@ -52,10 +63,10 @@ export interface AvatarGridProps {
   avatars: Avatar[]
   loading: boolean
   hasReachedFreeLimit: boolean
-  sessionLoading?: boolean
-  selectedAvatarId?: string | null
+  sessionLoading: boolean
+  selectedAvatarId: string | null
   onStartChat: (avatarId: string) => void
-  pagination?: PaginationMeta
+  pagination: PaginationMeta | null
   onPageChange: (page: number) => void
 }
 
@@ -74,4 +85,10 @@ export interface AvatarFiltersProps {
   filterOptions: FilterOptions
   onFiltersChange: (filters: Partial<AvatarFilters>) => void
   disabled?: boolean
+}
+
+export interface HeroSectionProps {
+  isAuthenticated: boolean
+  user: any | null
+  anonymousSession: any | null
 } 
