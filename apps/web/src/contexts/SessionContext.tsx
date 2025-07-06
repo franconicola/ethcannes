@@ -12,6 +12,13 @@ const API_CONFIG = {
     : "/api",
 }
 
+// Debug logging for SessionContext
+if (typeof window !== 'undefined') {
+  console.log('🔧 DEBUG SessionContext - Environment variable:', process.env.NEXT_PUBLIC_API_URL);
+  console.log('🔧 DEBUG SessionContext - Final API baseUrl:', API_CONFIG.baseUrl);
+  console.log('🔧 DEBUG SessionContext - Window origin:', window.location.origin);
+}
+
 export interface AIAgentSession {
   sessionId: string
   agentId: string
@@ -137,8 +144,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         headers['X-Anonymous-Session-Id'] = backendSessionId
       }
     }
+
+    const fullUrl = `${API_CONFIG.baseUrl}${endpoint}`
+    console.log('🔧 DEBUG SessionContext - Making request to:', fullUrl)
+    console.log('🔧 DEBUG SessionContext - API_CONFIG.baseUrl:', API_CONFIG.baseUrl)
+    console.log('🔧 DEBUG SessionContext - endpoint:', endpoint)
     
-    const response = await fetch(`${API_CONFIG.baseUrl}${endpoint}`, {
+    const response = await fetch(fullUrl, {
       ...options,
       headers,
     })
