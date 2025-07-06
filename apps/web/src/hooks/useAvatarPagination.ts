@@ -1,5 +1,10 @@
-import type { Avatar, PaginationMeta } from '@/components/avatar/types'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import type { Avatar, PaginationMeta } from '@/components/avatar/types';
+import { useCallback, useEffect, useRef, useState } from 'react';
+
+// API Configuration - use environment variable or fallback to defaults
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || (typeof window !== 'undefined' && window.location.origin.includes('localhost')) 
+  ? "http://localhost:3000/api" 
+  : "/api";
 
 interface UseAvatarPaginationOptions {
   initialPage?: number
@@ -47,13 +52,13 @@ export function useAvatarPagination(options: UseAvatarPaginationOptions = {}): U
   const loadAvatars = useCallback(async (page: number, limit: number, signal: AbortSignal) => {
     console.log('🔄 Loading avatars:', { page, limit })
 
-    // Build API URL - use relative URL to avoid hostname issues
-      const params = new URLSearchParams()
+    // Build API URL - use environment variable
+    const params = new URLSearchParams()
     params.set('page', page.toString())
     params.set('limit', limit.toString())
       
-    const finalUrl = `/api/agents/public?${params.toString()}`
-      console.log(`🔄 Trying API at: ${finalUrl}`)
+    const finalUrl = `${API_BASE_URL}/agents/public?${params.toString()}`
+    console.log(`🔄 Trying API at: ${finalUrl}`)
 
       try {
       // Use minimal fetch options that work (no Content-Type header for GET requests)

@@ -5,9 +5,9 @@ import { usePrivy } from '@privy-io/react-auth'
 import { useRouter } from 'next/navigation'
 import { createContext, ReactNode, useCallback, useContext, useEffect, useRef, useState } from 'react'
 
-// API Configuration
+// API Configuration - use environment variable or fallback to defaults
 const API_CONFIG = {
-  baseUrl: (typeof window !== 'undefined' && window.location.origin.includes('localhost')) 
+  baseUrl: process.env.NEXT_PUBLIC_API_URL || (typeof window !== 'undefined' && window.location.origin.includes('localhost')) 
     ? "http://localhost:3000/api" 
     : "/api",
 }

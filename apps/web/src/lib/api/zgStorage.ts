@@ -1,8 +1,8 @@
 // Frontend API service for 0G Storage operations
 
-// API Configuration - use backend API for 0G Storage
+// API Configuration - use environment variable or fallback to defaults
 const API_CONFIG = {
-  baseUrl: (typeof window !== 'undefined' && window.location.origin.includes('localhost')) 
+  baseUrl: process.env.NEXT_PUBLIC_API_URL || (typeof window !== 'undefined' && window.location.origin.includes('localhost')) 
     ? "http://localhost:3000/api" 
     : "/api",
 };

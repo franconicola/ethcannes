@@ -69,7 +69,7 @@ export function AlertsSection({
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Retry
               </Button>
-                              <Button variant="outline" size="sm" onClick={() => window.open('http://localhost:3000', '_blank')}>
+              <Button variant="outline" size="sm" onClick={() => window.open((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api').replace('/api', ''), '_blank')}>
                 <ExternalLink className="h-4 w-4 mr-2" />
                 Check API
               </Button>
