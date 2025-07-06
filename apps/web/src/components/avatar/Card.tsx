@@ -9,6 +9,18 @@ import { useState } from 'react'
 import type { AvatarCardProps } from './types'
 import { VerificationBadge } from './VerificationBadge'
 
+// Fallback image utility
+const getFallbackImage = (agentId: string): string => {
+  // Use a simple gradient or emoji as fallback
+  const fallbacks: Record<string, string> = {
+    'professional-advisor': '🐊',
+    'creative-mentor': '🐭', 
+    'technical-expert': '🐢',
+    'default': '🤖'
+  };
+  return fallbacks[agentId] || fallbacks.default;
+};
+
 export function AvatarCard({ 
   avatar, 
   loading, 
@@ -30,6 +42,7 @@ export function AvatarCard({
   }
 
   const handleImageError = () => {
+    console.warn('❌ Failed to load avatar image:', avatar.image);
     setImageLoading(false)
     setImageError(true)
   }
@@ -40,6 +53,7 @@ export function AvatarCard({
   }
 
   const handleGifError = () => {
+    console.warn('❌ Failed to load avatar GIF:', avatar.gifUrl);
     setGifLoading(false)
     setGifError(true)
   }
@@ -82,6 +96,7 @@ export function AvatarCard({
             onLoad={handleImageLoad}
             onError={handleImageError}
             priority={false}
+            unoptimized={avatar.image?.includes('.gif')}
           />
         )}
         
@@ -96,7 +111,7 @@ export function AvatarCard({
             onLoad={handleGifLoad}
             onError={handleGifError}
             priority={false}
-            unoptimized // Important for GIFs to maintain animation
+            unoptimized // Important for GIFs to maintain animation and handle large files
           />
         )}
         
@@ -107,7 +122,7 @@ export function AvatarCard({
             <Avatar className="w-16 h-16 lg:w-20 lg:h-20">
               {/* @ts-ignore */}
               <AvatarFallback className="text-xl lg:text-2xl font-bold bg-white/20 text-primary-foreground">
-                {avatar.name.charAt(0)}
+                {getFallbackImage(avatar.id)}
               </AvatarFallback>
             </Avatar>
           </div>

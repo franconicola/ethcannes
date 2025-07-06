@@ -1,10 +1,10 @@
 // Public agents endpoint
 import { NextApiRequest, NextApiResponse } from 'next';
 import {
-  createSuccessResponse,
-  getPrismaClient,
-  handleCORS,
-  validateMethod
+    createSuccessResponse,
+    getPrismaClient,
+    handleCORS,
+    validateMethod
 } from '../../../lib/api/middleware';
 import { getAvailableAgents } from '../../../lib/api/services/aiAgentService';
 import { AIAgent, ApiResponse, PaginationParams, PublicAgentsResponse } from '../../../lib/api/types';
@@ -67,11 +67,9 @@ export default async function handler(
       // 'mindfulness-guide': { image: 'robot.svg', gif: 'turtle.gif' }
     };
 
-    // Helper function to get media URLs
+    // Helper function to get media URLs - use relative paths for Next.js
     const getMediaUrl = (filename: string, type: 'images' | 'gifs'): string => {
-      const protocol = req.headers['x-forwarded-proto'] || 'http';
-      const host = req.headers.host;
-      return `${protocol}://${host}/${type}/${filename}`;
+      return `/${type}/${filename}`;
     };
 
     const agentsWithMedia: AIAgent[] = paginatedAgents.map((agent: any) => {

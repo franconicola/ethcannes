@@ -23,6 +23,10 @@ const nextConfig = {
         hostname: 'images.unsplash.com',
       },
       {
+        protocol: 'https',
+        hostname: 'sparkmind-mocha.vercel.app',
+      },
+      {
         protocol: 'http',
         hostname: 'localhost',
         port: '3000',
@@ -33,6 +37,10 @@ const nextConfig = {
         port: '3000',
       },
     ],
+    // Allow larger files and disable optimization for GIFs to preserve animation
+    unoptimized: false,
+    minimumCacheTTL: 60,
+    formats: ['image/webp', 'image/avif'],
   },
   output: 'standalone',
   experimental: {
