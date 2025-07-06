@@ -7,6 +7,13 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ||
     ? "http://localhost:3000/api" 
     : "/api");
 
+// Debug logging
+if (typeof window !== 'undefined') {
+  console.log('🔧 DEBUG Avatar - Environment variable:', process.env.NEXT_PUBLIC_API_URL);
+  console.log('🔧 DEBUG Avatar - Final API baseUrl:', API_BASE_URL);
+  console.log('🔧 DEBUG Avatar - Window origin:', window.location.origin);
+}
+
 interface UseAvatarPaginationOptions {
   initialPage?: number
   initialLimit?: number

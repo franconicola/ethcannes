@@ -8,6 +8,13 @@ const API_CONFIG = {
     : "/api",
 };
 
+// Debug logging
+if (typeof window !== 'undefined') {
+  console.log('🔧 DEBUG - Environment variable:', process.env.NEXT_PUBLIC_API_URL);
+  console.log('🔧 DEBUG - Final API baseUrl:', API_CONFIG.baseUrl);
+  console.log('🔧 DEBUG - Window origin:', window.location.origin);
+}
+
 export interface AIAgentSession {
   sessionId: string;
   agentId: string;
