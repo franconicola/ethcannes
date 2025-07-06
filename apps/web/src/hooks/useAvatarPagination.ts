@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 // API Configuration - use environment variable or fallback to defaults
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 
-  (typeof window !== 'undefined' && window.location.origin.includes('localhost') 
+  ((typeof window !== 'undefined' && window.location.origin.includes('localhost')) 
     ? "http://localhost:3000/api" 
     : "/api");
 

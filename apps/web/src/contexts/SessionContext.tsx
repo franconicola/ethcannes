@@ -7,9 +7,10 @@ import { createContext, ReactNode, useCallback, useContext, useEffect, useRef, u
 
 // API Configuration - use environment variable or fallback to defaults
 const API_CONFIG = {
-  baseUrl: process.env.NEXT_PUBLIC_API_URL || (typeof window !== 'undefined' && window.location.origin.includes('localhost')) 
-    ? "http://localhost:3000/api" 
-    : "/api",
+  baseUrl: process.env.NEXT_PUBLIC_API_URL || 
+    ((typeof window !== 'undefined' && window.location.origin.includes('localhost')) 
+      ? "http://localhost:3000/api" 
+      : "/api"),
 }
 
 // Debug logging for SessionContext
